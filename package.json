@@ -15,6 +15,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run scripts/dev.ts",
+    "dev:web": "bun run scripts/dev.ts --web",
     "dev:desktop": "bun run --cwd apps/desktop dev",
     "dev:stdio": "bun run --cwd apps/mcp dev:stdio",
     "build:desktop": "bun run --cwd apps/desktop build",

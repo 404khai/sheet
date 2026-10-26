@@ -122,6 +122,7 @@ describe('MCP web transactions', () => {
       designId,
       expectedRevision: 0,
       transaction,
+      verbose: true,
     })
     const body = textResult(result)
     expect(body).toMatchObject({ applied: true, revision: 1 })
@@ -188,6 +189,7 @@ describe('MCP web transactions', () => {
     const result = textResult(await execute('applyWebTransaction', {
       designId,
       expectedRevision: 0,
+      verbose: true,
       transaction: {
         id: 'resize-page',
         label: 'Resize page',

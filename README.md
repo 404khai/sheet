@@ -29,6 +29,8 @@ the app shows ready-made snippets.
 
 `bun run build:desktop` produces the packaged app with the server compiled in.
 
+Windows users: see [windows/README.md](./windows/README.md) for quick setup, PowerShell scripts (`setup.ps1`, `run.ps1`, `build.ps1`), and development workflows.
+
 ## Design guide skill
 
 Teaches an agent to use the canvas tools well. Add `-g` to install globally.

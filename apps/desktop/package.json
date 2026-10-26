@@ -7,8 +7,9 @@
   },
   "scripts": {
     "dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
+    "dev:web": "vite dev --port 1421 --strictPort --host 127.0.0.1",
     "build:app": "vite build",
-    "build:server": "bun run --cwd ../../packages/db embed && mkdir -p src-tauri/binaries && bun build --compile ../mcp/src/local.ts --outfile src-tauri/binaries/sheet-server",
+    "build:server": "bun run ../../scripts/build-server.ts",
     "build": "tauri build",
     "check": "tsc --noEmit && cargo check --manifest-path src-tauri/Cargo.toml",
     "generate-routes": "tsr generate"

@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { homedir, platform } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -79,9 +79,21 @@ async function readText(path: string) {
 /** Write beside the target, then rename, so a crash never leaves half a config. */
 export async function writeAtomic(path: string, text: string) {
   await mkdir(dirname(path), { recursive: true })
-  const temp = `${path}.sheet-${process.pid}.tmp`
+  const temp = `${path}.sheet-${process.pid}-${Date.now()}.tmp`
   await writeFile(temp, text, 'utf8')
-  await rename(temp, path)
+  try {
+    await rename(temp, path)
+  } catch {
+    // On Windows, rename over an existing file can throw EPERM/EBUSY.
+    // Try unlink + rename fallback, then copyFile + cleanup if rename is blocked.
+    try {
+      await rm(path, { force: true })
+      await rename(temp, path)
+    } catch {
+      await copyFile(temp, path)
+      await rm(temp, { force: true }).catch(() => {})
+    }
+  }
 }
 
 async function installJson(target: JsonTarget): Promise<InstallResult> {

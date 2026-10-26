@@ -1,10 +1,26 @@
 import { chromium } from 'playwright-core'
+import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const url = process.argv[2] ?? 'http://127.0.0.1:1421/'
-const browser = await chromium.launch({
-  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  headless: true,
-})
+const executable =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim() ||
+  process.env.CHROMIUM_PATH?.trim() ||
+  [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    process.env.PROGRAMFILES && `${process.env.PROGRAMFILES}\\Google\\Chrome\\Application\\chrome.exe`,
+    process.env['PROGRAMFILES(X86)'] && `${process.env['PROGRAMFILES(X86)']}\\Google\\Chrome\\Application\\chrome.exe`,
+    process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  ].find((p) => p && existsSync(p))
+
+const launchOptions = executable ? { executablePath: executable, headless: true } : { headless: true }
+const browser = await chromium.launch(launchOptions)
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 const t0 = Date.now()
 const events = []
@@ -59,5 +75,7 @@ const timing = await page.evaluate(() => {
 })
 console.log('\nperf:', timing)
 
-await page.screenshot({ path: '/tmp/boot-final.png' })
+const screenshotPath = join(tmpdir(), 'boot-final.png')
+await page.screenshot({ path: screenshotPath })
+console.log(`Saved screenshot to: ${screenshotPath}`)
 await browser.close()

@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
-import { readFile } from 'node:fs/promises'
-import { cp } from 'node:fs/promises'
+import { cp, readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -21,7 +21,7 @@ function vendorFonts(): Plugin {
         const path = request.url?.split('?')[0]
         if (!path?.startsWith('/vendor/')) return next()
         try {
-          const file = await readFile(fontsDirectory + path.slice('/vendor/'.length))
+          const file = await readFile(join(fontsDirectory, path.slice('/vendor/'.length)))
           response.setHeader(
             'content-type',
             path.endsWith('.css') ? 'text/css; charset=utf-8' : 'font/woff2',
