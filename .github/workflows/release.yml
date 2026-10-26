@@ -1,9 +1,9 @@
 name: Release
 
-# Publishing a GitHub release builds the Apple Silicon app and the Windows x64
-# app, and attaches both, plus the signed update bundles and the `latest.json`
-# the in-app updater reads, to that same release. The app version comes from the
-# tag, so there is nothing to bump.
+# Publishing a GitHub release builds the Apple Silicon app, the Windows x64 app
+# and the Linux x64 app, and attaches all three, plus the signed update bundles
+# and the `latest.json` the in-app updater reads, to that same release. The app
+# version comes from the tag, so there is nothing to bump.
 
 on:
   release:
@@ -146,3 +146,81 @@ jobs:
           installer="$(ls apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe | head -1)"
           cp "$installer" Sheet-windows-x64.exe
           gh release upload "$TAG" Sheet-windows-x64.exe --clobber --repo "${{ github.repository }}"
+
+  # Also serialized: the `linux-x86_64` platform entry is merged into the same
+  # `latest.json`. Ubuntu 22.04 keeps the glibc floor low enough for AppImage.
+  build-linux:
+    name: Linux x64
+    needs: build-windows
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag must use the vX.Y.Z format, got $TAG"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      # Tauri's Linux prerequisites: WebKitGTK 4.1, the AppIndicator library the
+      # tray/indicator code links against, and the rest of the bundler's needs.
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
+            patchelf \
+            build-essential \
+            curl \
+            wget \
+            file
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - run: bun install --frozen-lockfile
+
+      # AppImage is the only format the Linux updater can replace in place, so
+      # it is the one that must be built; the deb is a convenience package.
+      - name: Build and attach to the release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: bunx tauri
+          tagName: ${{ steps.version.outputs.tag }}
+          releaseDraft: false
+          uploadUpdaterJson: true
+          args: --target x86_64-unknown-linux-gnu --bundles appimage,deb --config '{"version":"${{ steps.version.outputs.version }}"}'
+
+      # The AppImage is named after its version; the fixed name is the stable
+      # link a download button can point at.
+      - name: Add the fixed-name download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          appimage="$(ls apps/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage | head -1)"
+          cp "$appimage" Sheet-linux-x64.AppImage
+          gh release upload "$TAG" Sheet-linux-x64.AppImage --clobber --repo "${{ github.repository }}"
