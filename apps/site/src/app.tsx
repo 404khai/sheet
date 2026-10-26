@@ -10,11 +10,9 @@ import {
 } from './diagrams'
 import { prefersReducedMotion, trackPointer, useInView } from './hooks'
 import { DownloadDialog } from './download-dialog'
+import { downloadLabel, downloadTarget, downloadUrl, REPO, type DownloadTarget } from './download'
+import { PlatformMark } from './marks'
 import { chooseTheme, currentTheme, followSystem } from './theme'
-
-const REPO = 'https://github.com/DeepanshuMishraa/sheet'
-/** A fixed name, so the link keeps working across versions: the release workflow uploads the DMG under it. */
-const DOWNLOAD = `${REPO}/releases/latest/download/Sheet-macos-arm64.dmg`
 
 /** One agent step: when it fires, what the log says. */
 const script = [
@@ -280,13 +278,17 @@ function Card({ className, children }: { className?: string; children: ReactNode
 export function App() {
   const detected = useMemo(detectPlatform, [])
   const [platform, setPlatform] = useState<Platform>(detected)
-  const [downloadOpen, setDownloadOpen] = useState(false)
+  /** The build being downloaded; null while the dialog is closed. */
+  const [download, setDownload] = useState<DownloadTarget | null>(null)
+  const target = downloadTarget(detected)
+  /** The platforms section offers whichever tab is open, so the two agree. */
+  const shownTarget = downloadTarget(platform)
 
   /** Plain clicks open the dialog; a modified click (new tab, save link) keeps the real link. */
-  const openDownload = (event: MouseEvent<HTMLAnchorElement>) => {
+  const openDownload = (next: DownloadTarget) => (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
-    setDownloadOpen(true)
+    setDownload(next)
   }
 
   return (
@@ -305,7 +307,13 @@ export function App() {
               GitHub
             </a>
             <ThemeToggle />
-            <a className="button button-solid button-small" href={DOWNLOAD} onClick={openDownload} data-cuelume-tap>
+            <a
+              className="button button-solid button-small"
+              href={downloadUrl(target)}
+              onClick={openDownload(target)}
+              data-cuelume-tap
+            >
+              <PlatformMark target={target} />
               Download
             </a>
           </nav>
@@ -324,8 +332,14 @@ export function App() {
               build beside you, live, in the same file.
             </p>
             <div className="actions">
-              <a className="button button-solid button-large" href={DOWNLOAD} onClick={openDownload} data-cuelume-tap>
-                Download for macOS
+              <a
+                className="button button-solid button-large"
+                href={downloadUrl(target)}
+                onClick={openDownload(target)}
+                data-cuelume-tap
+              >
+                <PlatformMark target={target} />
+                {downloadLabel(target)}
               </a>
               <a className="button button-large" href={REPO} data-cuelume-navigate>
                 View on GitHub
@@ -420,8 +434,14 @@ export function App() {
                 ))}
               </div>
               <PlatformWindow platform={platform} />
-              <a className="button button-solid" href={DOWNLOAD} onClick={openDownload} data-cuelume-tap>
-                Download for macOS
+              <a
+                className="button button-solid"
+                href={downloadUrl(shownTarget)}
+                onClick={openDownload(shownTarget)}
+                data-cuelume-tap
+              >
+                <PlatformMark target={shownTarget} />
+                {downloadLabel(shownTarget)}
               </a>
             </div>
           </Reveal>
@@ -430,8 +450,9 @@ export function App() {
         <section id="download" className="cta">
           <Reveal>
             <h2>Open a canvas. Invite your agent.</h2>
-            <a className="button button-solid button-large" href={DOWNLOAD} onClick={openDownload} data-cuelume-tap>
-              Download for macOS
+            <a className="button button-solid button-large" href={downloadUrl(target)} onClick={openDownload(target)} data-cuelume-tap>
+              <PlatformMark target={target} />
+              {downloadLabel(target)}
             </a>
           </Reveal>
         </section>
@@ -447,7 +468,11 @@ export function App() {
           GitHub
         </a>
       </footer>
-      <DownloadDialog open={downloadOpen} href={DOWNLOAD} onClose={() => setDownloadOpen(false)} />
+      <DownloadDialog
+        open={download !== null}
+        target={download ?? target}
+        onClose={() => setDownload(null)}
+      />
     </>
   )
 }
