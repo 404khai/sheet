@@ -222,7 +222,7 @@ impl LocalProfile {
         #[cfg(target_os = "macos")]
         let full_name = command_output("id", &["-F", &username]);
         #[cfg(not(target_os = "macos"))]
-        let full_name = None;
+        let full_name: Option<String> = None;
         #[cfg(target_os = "macos")]
         let picture = command_bytes(
             "dscl",
@@ -685,16 +685,25 @@ async fn desktop_update_install(State(state): State<AppState>) -> Response {
 
 fn open_external(url: &str) -> std::io::Result<()> {
     #[cfg(target_os = "macos")]
-    let mut command = std::process::Command::new("open");
+    let mut command = {
+        let mut command = std::process::Command::new("open");
+        command.arg(url);
+        command
+    };
     #[cfg(target_os = "windows")]
     let mut command = {
         let mut command = std::process::Command::new("cmd");
+        // `start` reads its first quoted argument as the window title, so it gets an empty one.
         command.args(["/c", "start", "", url]);
-        return command.spawn().map(|_| ());
+        command
     };
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
-    let mut command = std::process::Command::new("xdg-open");
-    command.arg(url).spawn().map(|_| ())
+    let mut command = {
+        let mut command = std::process::Command::new("xdg-open");
+        command.arg(url);
+        command
+    };
+    command.spawn().map(|_| ())
 }
 
 fn is_hop_by_hop(name: &HeaderName) -> bool {
