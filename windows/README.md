@@ -21,7 +21,9 @@ First-class Windows support for [Sheet](https://github.com/DeepanshuMishraa/shee
 Clone the repository and run the automated Windows setup script in PowerShell:
 
 ```powershell
-# In PowerShell:
+# In PowerShell, from the repository root.
+# Only this session needs the relaxed policy; the machine setting is untouched.
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\windows\setup.ps1
 ```
 
@@ -40,6 +42,13 @@ Starts the local server (oRPC + MCP + SSE) on `:4100`, starts the Vite visual ca
 
 *Note: Does not require Rust or C++ Build Tools. Full visual canvas and MCP server functionality are available.*
 
+If a Sheet server is already listening on `:4100`, `run.ps1` refuses to start a second one. Pass `-ReuseServer` to attach to the running server, or `-Port` / `-AppPort` to move the server or the canvas:
+
+```powershell
+.\windows\run.ps1 -Web -ReuseServer
+.\windows\run.ps1 -Web -Port 4101 -AppPort 1422
+```
+
 #### B. Server-Only (MCP AI Agent Host)
 Starts only the local backend server and MCP JSON-RPC endpoint on loopback `:4100`:
 
@@ -54,7 +63,7 @@ Spawns the native Tauri desktop window using the Windows WebView2 runtime (requi
 .\windows\run.ps1 -Desktop
 ```
 
-Press `Ctrl+C` in the PowerShell window to gracefully terminate all child processes and free loopback ports.
+Press `Ctrl+C` in the PowerShell window to stop all child processes and free the loopback ports.
 
 ---
 
@@ -128,9 +137,12 @@ bun run test windows/tests/windows-platform.test.ts
 Use `windows/build.ps1` to produce Windows distributions:
 
 ```powershell
-# 1. Portable Distribution (Standalone folder with sheet-server.exe, assets, and launcher)
+# 1. Portable Distribution (server, built interface, and launcher)
 .\windows\build.ps1 -Portable
 # Output: dist/windows-portable/
+# launch.bat runs sheet-server.exe with SHEET_APP_DIR pointing at the bundled
+# interface, so http://127.0.0.1:4100 opens the canvas and /mcp stays available.
+# Data lives in %APPDATA%\Sheet\sheet.db; close the "Sheet" console window to stop.
 
 # 2. Server Sidecar Only (Compiles sheet-server.exe)
 .\windows\build.ps1 -ServerOnly
@@ -140,27 +152,35 @@ Use `windows/build.ps1` to produce Windows distributions:
 .\windows\build.ps1 -Package
 ```
 
+Running `.\windows\build.ps1` with no switches builds the server and interface, then packages the portable distribution.
+
 ---
 
 ## Persistent Data & Storage
 
 - **Production**: `%APPDATA%\Sheet\` (`sheet.db` and `handoff.key`)
 - **Development**: `%APPDATA%\Sheet Dev\` (`sheet.db` and `handoff.key`)
-- **Override**: Set the `SHEET_DATA_DIR` environment variable to point to any custom directory.
+- **Override**: Set `SHEET_DATA_DIR` for the launchers, which pass the database path to the server as `SHEET_SQLITE_PATH`.
 
-Back up your designs by copying the SQLite `sheet.db` file while Sheet is not writing.
+The database runs in WAL mode, so recent writes can live in `sheet.db-wal` until a checkpoint. To back up safely, close Sheet first, then copy all three files together if they exist:
+
+```powershell
+$backup = "$env:USERPROFILE\Desktop\sheet-backup"
+New-Item -ItemType Directory -Path $backup -Force | Out-Null
+Copy-Item "$env:APPDATA\Sheet\sheet.db*" -Destination $backup
+```
 
 ---
 
 ## Architecture & Windows Boundaries
 
 - **Cross-Platform Boundaries**:
-  - `windows/src/platform-adapter.ts`: Encapsulates Windows-specific path normalization, `%APPDATA%` resolution, and file locking mitigation.
+  - `windows/src/platform-adapter.ts`: Windows path normalization (`win32` semantics and `file:///C:/...` URLs), `%APPDATA%` resolution, browser discovery, and loopback port checks.
   - `apps/desktop/src-tauri/tauri.conf.json`: Configured with cross-platform bundle targets (`"targets": "all"`).
-  - `apps/mcp/src/agent-install.ts`: Equipped with atomic file write fallbacks for Windows `EPERM` locks.
+  - `apps/mcp/src/agent-install.ts`: writes agent configs through a unique temporary file renamed into place, retrying the rename while Windows indexers or antivirus hold the target. If the lock never clears, the previous file is left exactly as it was.
+  - `apps/mcp/src/local.ts`: with `SHEET_APP_DIR` set, serves the built interface (SPA fallback included) so the portable bundle opens the canvas, not just the MCP endpoint.
   - `scripts/build-server.ts`: Replaces Unix shell commands with cross-platform binary compilation.
-- **Reference Preservation**:
-  - The existing macOS implementation (`TitleBarStyle::Overlay`, Gatekeeper unquarantining, `.dmg` packaging in `.github/workflows/release.yml`) remains 100% intact and untouched.
+- **macOS packaging**: the `.dmg` is still built by `.github/workflows/release.yml` on `macos-latest` (`aarch64-apple-darwin`); the same workflow builds the Windows NSIS installer on `windows-latest` and attaches both to the release.
 
 ---
 

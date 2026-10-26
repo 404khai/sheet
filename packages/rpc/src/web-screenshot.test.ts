@@ -32,8 +32,10 @@ function fakeWindow() {
   const unregister = registerCapturer({
     send: (request) => {
       requests.push(request)
+      // A subtree capture is only as wide as the subtree; the window measures it.
+      const width = request.rootId === null ? request.width : 400
       queueMicrotask(() =>
-        completeCapture(request.id, { ok: true, bytes, mimeType: 'image/png', width: request.width, height: 600 }),
+        completeCapture(request.id, { ok: true, bytes, mimeType: 'image/png', width, height: 600 }),
       )
     },
   })
@@ -138,7 +140,7 @@ describe('web screenshots', () => {
       expect(full.rootId).toBeNull()
       expect(window.requests[0]?.html).toContain('data-sheet-export-root="true"')
 
-      const scoped = await renderWebScreenshot(LOCAL_USER_ID, document, { rootId: 'title', width: 800 })
+      const scoped = await renderWebScreenshot(LOCAL_USER_ID, document, { rootId: 'title' })
       expect(scoped.rootId).toBe('title')
       expect(window.requests[1]?.rootId).toBe('title')
       expect(scoped.width).toBeLessThanOrEqual(full.width)

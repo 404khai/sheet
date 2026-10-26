@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
-    "dev:web": "vite dev --port 1421 --strictPort --host 127.0.0.1",
+    "dev:web": "vite dev --mode web --strictPort --host 127.0.0.1",
     "build:app": "vite build",
     "build:server": "bun run ../../scripts/build-server.ts",
     "build": "tauri build",

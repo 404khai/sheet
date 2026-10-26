@@ -1,14 +1,15 @@
-import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { homedir, platform } from 'node:os'
-import { dirname, isAbsolute, join, normalize, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { join, resolve, win32 } from 'node:path'
 
 /**
  * Windows platform adapter for Sheet.
  * Provides safe path normalization, application data path resolution,
- * Chromium/Edge detection, and atomic file I/O handling on Windows.
+ * Chromium/Edge detection, and loopback port helpers.
+ *
+ * Path parsing uses `win32` explicitly so the behaviour is identical when the
+ * helpers are exercised from a non-Windows host (tests, CI).
  */
 
 export function isWindows(): boolean {
@@ -23,12 +24,10 @@ export function isWindows(): boolean {
  * Overridable with SHEET_DATA_DIR.
  */
 export function resolveAppDataDir(options: { isDev?: boolean; customDir?: string } = {}): string {
-  if (options.customDir && options.customDir.trim()) {
-    return resolve(options.customDir.trim())
-  }
-  if (process.env.SHEET_DATA_DIR && process.env.SHEET_DATA_DIR.trim()) {
-    return resolve(process.env.SHEET_DATA_DIR.trim())
-  }
+  const customDir = options.customDir?.trim()
+  if (customDir) return resolve(customDir)
+  const fromEnv = process.env.SHEET_DATA_DIR?.trim()
+  if (fromEnv) return resolve(fromEnv)
 
   const base = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming')
   const folderName = options.isDev ? 'Sheet Dev' : 'Sheet'
@@ -40,18 +39,30 @@ export function resolveAppDataDir(options: { isDev?: boolean; customDir?: string
  * forward/backward slashes, and spaces safely.
  */
 export function normalizeWindowsPath(inputPath: string): string {
-  if (!inputPath) return ''
-  // Normalize slashes to standard Windows backslash
-  const resolved = isAbsolute(inputPath) ? normalize(inputPath) : resolve(inputPath)
-  return resolved
+  const trimmed = inputPath.trim()
+  if (!trimmed) return ''
+  return win32.normalize(win32.isAbsolute(trimmed) ? trimmed : win32.resolve(trimmed))
 }
 
 /**
- * Converts a Windows filesystem path to a valid file:// URL.
+ * Converts a Windows filesystem path to a valid file:// URL, including UNC
+ * shares and drive letters. `pathToFileURL` cannot do this off Windows: it
+ * reads `C:\...` as a relative path.
  */
 export function windowsPathToFileUrl(inputPath: string): string {
   const normalized = normalizeWindowsPath(inputPath)
-  return pathToFileURL(normalized).href
+  if (!normalized) throw new Error('Cannot convert an empty path to a file URL')
+
+  if (normalized.startsWith('\\\\')) {
+    const [host, ...rest] = normalized.slice(2).split('\\')
+    return `file://${encodeURIComponent(host ?? '')}/${rest.map(encodeURIComponent).join('/')}`
+  }
+
+  const segments = normalized.replace(/\\/g, '/').split('/')
+  const encoded = segments
+    .map((segment, index) => (/^[A-Za-z]:$/.test(segment) && index === 0 ? segment : encodeURIComponent(segment)))
+    .join('/')
+  return `file:///${encoded.replace(/^\/+/, '')}`
 }
 
 /**
@@ -83,60 +94,39 @@ export function findWindowsChromium(): string | null {
   return null
 }
 
-/**
- * Writes a file atomically with Windows-specific resilience against
- * transient EPERM / EBUSY locks caused by indexing or antivirus software.
- */
-export async function safeWriteAtomic(targetPath: string, content: string | Uint8Array): Promise<void> {
-  const dir = dirname(targetPath)
-  await mkdir(dir, { recursive: true })
-
-  const tempPath = `${targetPath}.sheet-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`
-  await writeFile(tempPath, content)
-
-  try {
-    await rename(tempPath, targetPath)
-  } catch (error) {
-    // Windows file locking fallback
-    try {
-      await rm(targetPath, { force: true })
-      await rename(tempPath, targetPath)
-    } catch {
-      // Direct copy fallback if rename is held
-      await copyFile(tempPath, targetPath)
-      await rm(tempPath, { force: true }).catch(() => {})
-    }
-  }
-}
+type BindOutcome = 'free' | 'in-use' | 'unavailable'
 
 /**
- * Tests if a given TCP port is already listening on loopback (127.0.0.1).
+ * Tries to bind the port on loopback. `EADDRINUSE` means something is already
+ * listening; any other bind error means the port cannot be used, which is
+ * different from being occupied.
  */
-export function isPortInUse(port: number): Promise<boolean> {
-  return new Promise((res) => {
+function bindLoopback(port: number): Promise<BindOutcome> {
+  return new Promise((settle) => {
     const server = createServer()
-    server.once('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        res(true)
-      } else {
-        res(false)
-      }
+    server.once('error', (error: NodeJS.ErrnoException) => {
+      settle(error.code === 'EADDRINUSE' ? 'in-use' : 'unavailable')
     })
     server.once('listening', () => {
-      server.close(() => res(false))
+      server.close(() => settle('free'))
     })
     server.listen(port, '127.0.0.1')
   })
 }
 
 /**
+ * Tests if a given TCP port is already listening on loopback (127.0.0.1).
+ */
+export async function isPortInUse(port: number): Promise<boolean> {
+  return (await bindLoopback(port)) === 'in-use'
+}
+
+/**
  * Discovers a free TCP port starting from the requested port.
  */
 export async function findFreePort(startPort = 4100): Promise<number> {
-  let port = startPort
-  while (await isPortInUse(port)) {
-    port += 1
-    if (port > 65535) throw new Error('No free TCP ports available')
+  for (let port = startPort; port <= 65535; port += 1) {
+    if ((await bindLoopback(port)) === 'free') return port
   }
-  return port
+  throw new Error(`No free TCP port on 127.0.0.1 at or above ${startPort}`)
 }

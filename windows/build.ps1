@@ -3,15 +3,23 @@
     Build and packaging script for Sheet on Windows.
 .DESCRIPTION
     Compiles the standalone backend server (sheet-server.exe), builds the
-    Vite desktop web interface (dist/app), and creates either a portable distribution
-    or a packaged native installer (via Tauri if Rust toolchain is installed).
+    Vite desktop web interface (dist/app), and creates either a portable
+    distribution or a packaged native installer (via Tauri if the Rust
+    toolchain is installed).
+
+    With no switches it builds both parts and packages the portable
+    distribution.
 
 .PARAMETER ServerOnly
-    Builds only the backend server sidecar (apps/mcp/dist/sheet-server.exe).
+    Builds only the backend server sidecar
+    (apps/desktop/src-tauri/binaries/sheet-server.exe). Cannot be combined
+    with -AppOnly.
 .PARAMETER AppOnly
-    Builds only the frontend interface (apps/desktop/dist/app).
+    Builds only the frontend interface (apps/desktop/dist/app). Cannot be
+    combined with -ServerOnly.
 .PARAMETER Portable
     Packages a standalone portable distribution into dist/windows-portable.
+    This is the default when neither -Portable nor -Package is given.
 .PARAMETER Package
     Builds the native Tauri Windows installer (.msi / .exe). Requires Rust.
 #>
@@ -26,6 +34,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+
+if ($ServerOnly -and $AppOnly) {
+    Write-Host '[Error] -ServerOnly and -AppOnly build different halves of the app.' -ForegroundColor Red
+    Write-Host '        Pick one, or run without either switch to build everything.' -ForegroundColor Yellow
+    exit 1
+}
 
 $RepoRoot = $PSScriptRoot
 if ((Split-Path -Leaf $RepoRoot) -eq 'windows') {
@@ -51,18 +65,25 @@ if (Get-Command 'bun.exe' -ErrorAction SilentlyContinue) {
 }
 
 if (-not $BunExe) {
-    Write-Error '[Error] Bun is required to build Sheet on Windows. Run .\windows\setup.ps1 first.'
+    Write-Host '[Error] Bun is required to build Sheet on Windows. Run .\windows\setup.ps1 first.' -ForegroundColor Red
     exit 1
 }
+
+$BuildServer = -not $AppOnly
+$BuildApp = -not $ServerOnly
+$TotalSteps = [int]$BuildServer + [int]$BuildApp + 1
+$Step = 0
 
 Push-Location $RepoRoot
 try {
     # 1. Build Server
-    if (-not $AppOnly) {
-        Write-Host '[1/3] Building backend server sidecar (sheet-server.exe)...' -ForegroundColor Cyan
+    if ($BuildServer) {
+        $Step += 1
+        Write-Host "[$Step/$TotalSteps] Building backend server sidecar (sheet-server.exe)..." -ForegroundColor Cyan
         & $BunExe run scripts/build-server.ts
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "[Error] Server build failed with exit code $LASTEXITCODE"
+            Write-Host "[Error] Server build failed with exit code $LASTEXITCODE" -ForegroundColor Red
+            Write-Host '        Fix the compiler error above, then run the build again.' -ForegroundColor Yellow
             exit $LASTEXITCODE
         }
         Write-Host '[OK] Server binary compiled successfully.' -ForegroundColor Green
@@ -75,14 +96,18 @@ try {
     }
 
     # 2. Build Frontend
-    Write-Host ''
-    Write-Host '[2/3] Building frontend application bundle (dist/app)...' -ForegroundColor Cyan
-    & $BunExe run --cwd apps/desktop build:app
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "[Error] Frontend build failed with exit code $LASTEXITCODE"
-        exit $LASTEXITCODE
+    if ($BuildApp) {
+        $Step += 1
+        Write-Host ''
+        Write-Host "[$Step/$TotalSteps] Building frontend application bundle (dist/app)..." -ForegroundColor Cyan
+        & $BunExe run --cwd apps/desktop build:app
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[Error] Frontend build failed with exit code $LASTEXITCODE" -ForegroundColor Red
+            Write-Host '        Fix the bundler error above, then run the build again.' -ForegroundColor Yellow
+            exit $LASTEXITCODE
+        }
+        Write-Host '[OK] Frontend bundle built successfully.' -ForegroundColor Green
     }
-    Write-Host '[OK] Frontend bundle built successfully.' -ForegroundColor Green
 
     if ($AppOnly) {
         Write-Host ''
@@ -91,13 +116,15 @@ try {
     }
 
     # 3. Packaging
+    $Step += 1
     Write-Host ''
-    Write-Host '[3/3] Packaging distribution...' -ForegroundColor Cyan
+    Write-Host "[$Step/$TotalSteps] Packaging distribution..." -ForegroundColor Cyan
 
     if ($Package) {
         # Native Tauri build
         if (-not (Get-Command 'cargo.exe' -ErrorAction SilentlyContinue)) {
-            Write-Error '[Error] Rust/Cargo is required to build the native Tauri package. Install Rust from https://rustup.rs'
+            Write-Host '[Error] Rust/Cargo is required to build the native Tauri package.' -ForegroundColor Red
+            Write-Host '        Install Rust from https://rustup.rs, or run .\windows\build.ps1 -Portable instead.' -ForegroundColor Yellow
             exit 1
         }
         Write-Host '[package] Building native Tauri Windows bundle (NSIS/MSI)...' -ForegroundColor Cyan
@@ -105,7 +132,7 @@ try {
         try {
             & $BunExe run build
             if ($LASTEXITCODE -ne 0) {
-                Write-Error "[Error] Tauri build failed with exit code $LASTEXITCODE"
+                Write-Host "[Error] Tauri build failed with exit code $LASTEXITCODE" -ForegroundColor Red
                 exit $LASTEXITCODE
             }
             Write-Host '[OK] Native Windows bundle built in apps/desktop/src-tauri/target/release/bundle' -ForegroundColor Green
@@ -116,8 +143,26 @@ try {
         # Create Portable Distribution
         $PortableDir = Join-Path $RepoRoot 'dist\windows-portable'
         Write-Host "[package] Creating portable distribution at: $PortableDir" -ForegroundColor Cyan
-        
+
         if (Test-Path $PortableDir) {
+            # A portable server left running holds sheet-server.exe open; deleting
+            # the directory would fail with a bare "file in use" error.
+            $RunningServer = $null
+            try {
+                $RunningServer = Get-Process -Name 'sheet-server' -ErrorAction SilentlyContinue |
+                    Where-Object {
+                        $_.Path -and $_.Path.StartsWith($PortableDir, [System.StringComparison]::OrdinalIgnoreCase)
+                    } |
+                    Select-Object -First 1
+            } catch {
+                $RunningServer = $null
+            }
+            if ($RunningServer) {
+                Write-Host "[Error] A previous portable Sheet server is still running from $PortableDir." -ForegroundColor Red
+                Write-Host '        Close its window (or stop sheet-server.exe) and run the build again.' -ForegroundColor Yellow
+                Write-Host '        Nothing was removed or overwritten.' -ForegroundColor Yellow
+                exit 1
+            }
             Remove-Item -Path $PortableDir -Recurse -Force
         }
         $null = New-Item -ItemType Directory -Path $PortableDir -Force
@@ -125,30 +170,53 @@ try {
         # Copy server binary
         $ServerBinSource = Join-Path $RepoRoot 'apps\desktop\src-tauri\binaries\sheet-server.exe'
         if (-not (Test-Path $ServerBinSource)) {
-            $ServerBinSource = Join-Path $RepoRoot 'apps\mcp\dist\sheet-server.exe'
+            Write-Host "[Error] sheet-server.exe was not found at $ServerBinSource." -ForegroundColor Red
+            Write-Host '        Run .\windows\build.ps1 (without -AppOnly) to compile it first.' -ForegroundColor Yellow
+            exit 1
         }
         Copy-Item -Path $ServerBinSource -Destination (Join-Path $PortableDir 'sheet-server.exe') -Force
 
         # Copy web frontend assets
         $AppSource = Join-Path $RepoRoot 'apps\desktop\dist\app'
+        if (-not (Test-Path (Join-Path $AppSource 'index.html'))) {
+            Write-Host "[Error] The built interface was not found at $AppSource." -ForegroundColor Red
+            Write-Host '        Run .\windows\build.ps1 (without -ServerOnly) to build it first.' -ForegroundColor Yellow
+            exit 1
+        }
         Copy-Item -Path $AppSource -Destination (Join-Path $PortableDir 'app') -Recurse -Force
 
-        # Create runner script
+        # The server serves the interface itself: SHEET_APP_DIR points at the
+        # copied bundle, and the database lives where the README promises.
         $LauncherContent = @"
 @echo off
 setlocal
 set SHEET_MCP_PORT=4100
-set SHEET_DATA_DIR=%APPDATA%\Sheet
+set SHEET_SQLITE_PATH=%APPDATA%\Sheet\sheet.db
+set SHEET_APP_DIR=%~dp0app
 title Sheet Local Server
 echo ========================================
 echo   Sheet for Windows Portable
-echo   MCP Endpoint: http://127.0.0.1:4100/mcp
+echo   Canvas:       http://127.0.0.1:4100
+echo   MCP endpoint: http://127.0.0.1:4100/mcp
+echo   Database:     %SHEET_SQLITE_PATH%
 echo ========================================
 echo.
-start "" "%~dp0sheet-server.exe"
-timeout /t 2 /nobreak >nul
-start http://127.0.0.1:4100
-echo Sheet server is running. Close this window to keep server running in background.
+start "Sheet" "%~dp0sheet-server.exe"
+echo Waiting for the local server...
+for /l %%i in (1,1,40) do (
+  powershell -NoProfile -Command "try { `$r = Invoke-RestMethod -Uri 'http://127.0.0.1:4100/ready' -TimeoutSec 1; if (`$r.ready) { exit 0 } } catch {}; exit 1" >nul 2>&1
+  if not errorlevel 1 goto ready
+  timeout /t 1 /nobreak >nul
+)
+echo [Error] Sheet did not become ready on port 4100.
+echo         The server window shows why; close it and run launch.bat again.
+pause
+exit /b 1
+:ready
+start "" http://127.0.0.1:4100
+echo Sheet is running in the "Sheet" console window.
+echo Close that window to stop the server.
+timeout /t 5 /nobreak >nul
 "@
         Set-Content -Path (Join-Path $PortableDir 'launch.bat') -Value $LauncherContent -Encoding Ascii
 

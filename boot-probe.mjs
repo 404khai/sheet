@@ -4,20 +4,21 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const url = process.argv[2] ?? 'http://127.0.0.1:1421/'
-const executable =
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim() ||
-  process.env.CHROMIUM_PATH?.trim() ||
-  [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    process.env.PROGRAMFILES && `${process.env.PROGRAMFILES}\\Google\\Chrome\\Application\\chrome.exe`,
-    process.env['PROGRAMFILES(X86)'] && `${process.env['PROGRAMFILES(X86)']}\\Google\\Chrome\\Application\\chrome.exe`,
-    process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-  ].find((p) => p && existsSync(p))
+// Only a browser that actually exists is used; a configured path wins over the
+// platform defaults.
+const executable = [
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim(),
+  process.env.CHROMIUM_PATH?.trim(),
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+  process.env.PROGRAMFILES && `${process.env.PROGRAMFILES}\\Google\\Chrome\\Application\\chrome.exe`,
+  process.env['PROGRAMFILES(X86)'] && `${process.env['PROGRAMFILES(X86)']}\\Google\\Chrome\\Application\\chrome.exe`,
+  process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+].find((p) => p && existsSync(p))
 
 const launchOptions = executable ? { executablePath: executable, headless: true } : { headless: true }
 const browser = await chromium.launch(launchOptions)

@@ -1,5 +1,6 @@
 import { RPCHandler } from '@orpc/server/fetch'
 import { and, eq } from 'drizzle-orm'
+import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { LOCAL_USER_ID, db, ensureLocalUser } from '@sheet/db'
 import { asset } from '@sheet/db/schema'
 import { appRouter } from '@sheet/rpc'
@@ -26,10 +27,66 @@ import { createAppState, handleRequest } from './handler'
  * - `/api/canvas-events` — live canvas/branch/agent events over SSE,
  *   backed by the in-process bus (no socket service, no Redis)
  *
+ * With `SHEET_APP_DIR` set (the portable Windows bundle, or any build of the
+ * interface) it also serves the built interface from disk, so a browser can
+ * open the canvas without the Tauri host.
+ *
  * The Tauri host spawns this on startup; `bun run dev:mcp` runs it directly.
  */
 
 const LOCAL_SESSION_ID = 'local'
+
+/** The built interface, when this process is also the web server. */
+const appDirEnv = process.env.SHEET_APP_DIR?.trim()
+const appDir = appDirEnv ? resolve(appDirEnv) : null
+
+const APP_CONTENT_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.wasm': 'application/wasm',
+  '.txt': 'text/plain; charset=utf-8',
+}
+
+/**
+ * Serves one file from the built interface. Routes without an extension fall
+ * back to `index.html` so client-side navigation keeps working on refresh.
+ */
+async function serveAppFile(pathname: string) {
+  if (!appDir) return null
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(pathname)
+  } catch {
+    return new Response('Bad path', { status: 400 })
+  }
+  if (decoded.includes('\0')) return new Response('Bad path', { status: 400 })
+  const file = resolve(appDir, `.${decoded}`)
+  const inside = relative(appDir, file)
+  if (inside === '..' || inside.startsWith(`..${sep}`) || isAbsolute(inside)) {
+    return new Response('Not found', { status: 404 })
+  }
+  const target = extname(file) ? file : join(appDir, 'index.html')
+  const body = Bun.file(target)
+  if (!(await body.exists())) return null
+  return new Response(body, {
+    headers: {
+      'content-type': APP_CONTENT_TYPES[extname(target).toLowerCase()] ?? 'application/octet-stream',
+      'cache-control': extname(file) ? 'no-cache' : 'no-store',
+    },
+  })
+}
 
 const rpc = new RPCHandler(appRouter)
 
@@ -264,7 +321,7 @@ async function route(request: Request, state: ReturnType<typeof createAppState>)
   const url = new URL(request.url)
   const path = url.pathname.replace(/\/+$/, '') || '/'
 
-  if (path === '/mcp' || path === '/ready' || path === '/health' || path === '/') {
+  if (path === '/mcp' || path === '/ready' || path === '/health' || (path === '/' && !appDir)) {
     return handleRequest(request, state)
   }
   if (path.startsWith('/api/rpc')) {
@@ -327,6 +384,11 @@ async function route(request: Request, state: ReturnType<typeof createAppState>)
       { sessionId: LOCAL_SESSION_ID },
       { headers: { 'cache-control': 'no-store' } },
     )
+  }
+  if (path.startsWith('/api/')) return new Response('Not found', { status: 404 })
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const asset = await serveAppFile(path)
+    if (asset) return asset
   }
   return new Response('Not found', { status: 404 })
 }

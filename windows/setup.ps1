@@ -4,6 +4,8 @@
 .DESCRIPTION
     Checks prerequisites, validates repository root, verifies toolchains,
     installs workspace dependencies via Bun preserving bun.lock, and embeds database migrations.
+.PARAMETER SkipInstall
+    Skip `bun install` and only verify the toolchain and embed migrations.
 #>
 
 [CmdletBinding()]
@@ -26,19 +28,21 @@ if ((Split-Path -Leaf $RepoRoot) -eq 'windows') {
 }
 
 $PackageJsonPath = Join-Path $RepoRoot 'package.json'
-if (-not (Test-Path $PackageJsonPath)) {
-    Write-Error "Must run from within the Sheet repository. Could not find $PackageJsonPath"
+if (-not (Test-Path -LiteralPath $PackageJsonPath)) {
+    Write-Host "[Error] Run this from inside the Sheet repository; $PackageJsonPath was not found." -ForegroundColor Red
     exit 1
 }
 
 try {
-    $PackageData = Get-Content $PackageJsonPath -Raw | ConvertFrom-Json
-    if ($PackageData.name -ne 'sheet') {
-        Write-Error "package.json does not match Sheet repository (found name '$($PackageData.name)')."
-        exit 1
-    }
+    $PackageData = Get-Content -LiteralPath $PackageJsonPath -Raw | ConvertFrom-Json
 } catch {
-    Write-Error "Failed to read package.json: $_"
+    Write-Host "[Error] Could not read $PackageJsonPath as JSON: $_" -ForegroundColor Red
+    exit 1
+}
+
+$PackageName = if ($PackageData.PSObject.Properties['name']) { $PackageData.name } else { $null }
+if ($PackageName -ne 'sheet') {
+    Write-Host "[Error] package.json does not look like the Sheet repository (found name '$PackageName')." -ForegroundColor Red
     exit 1
 }
 
@@ -53,7 +57,7 @@ if (Get-Command 'bun.exe' -ErrorAction SilentlyContinue) {
     $BunExe = (Get-Command 'bun').Source
 } else {
     $DefaultBunPath = Join-Path $env:USERPROFILE '.bun\bin\bun.exe'
-    if (Test-Path $DefaultBunPath) {
+    if (Test-Path -LiteralPath $DefaultBunPath) {
         $BunExe = $DefaultBunPath
     }
 }
@@ -65,9 +69,20 @@ if (-not $BunExe) {
     exit 1
 }
 
-$BunVersion = & $BunExe --version
+$BunVersion = (& $BunExe --version).Trim()
 Write-Host '[OK] Bun found: ' -NoNewline -ForegroundColor Green
 Write-Host "$BunExe (v$BunVersion)"
+
+# The workspace lockfile and `bun:sqlite` usage need Bun 1.3 or newer.
+$BunSemver = $null
+if ($BunVersion -match '^(\d+)\.(\d+)\.(\d+)') {
+    $BunSemver = [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])"
+}
+if ($BunSemver -and $BunSemver -lt [version]'1.3.0') {
+    Write-Host "[!] Bun $BunVersion is too old; Sheet needs 1.3.0 or newer." -ForegroundColor Red
+    Write-Host '    Update with: bun upgrade' -ForegroundColor Yellow
+    exit 1
+}
 
 # 3. Check Node.js
 if (Get-Command 'node' -ErrorAction SilentlyContinue) {
@@ -75,7 +90,7 @@ if (Get-Command 'node' -ErrorAction SilentlyContinue) {
     Write-Host '[OK] Node.js found: ' -NoNewline -ForegroundColor Green
     Write-Host $NodeVersion
 } else {
-    Write-Host '[info] Node.js not found in PATH (Bun will handle scripts).' -ForegroundColor DarkGray
+    Write-Host '[info] Node.js not found in PATH (Bun runs the workspace scripts).' -ForegroundColor DarkGray
 }
 
 # 4. Check Web Browsers (Chrome / Edge)
@@ -85,11 +100,11 @@ $ChromePaths = @(
     "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe",
     "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
     "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe"
-)
+) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
 
 $FoundBrowser = $null
 foreach ($Path in $ChromePaths) {
-    if (Test-Path $Path) {
+    if (Test-Path -LiteralPath $Path) {
         $FoundBrowser = $Path
         break
     }
@@ -102,16 +117,19 @@ if ($FoundBrowser) {
     Write-Host '[!] No standard Chrome or Edge found. Set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH if needed.' -ForegroundColor Yellow
 }
 
-# 5. Check Rust and Tauri prerequisites (Optional for -Web, required for native desktop build)
+# 5. Check Rust and Tauri prerequisites (optional; only for the native window)
 $HasCargo = $null -ne (Get-Command 'cargo.exe' -ErrorAction SilentlyContinue)
 if ($HasCargo) {
     $CargoVersion = & cargo --version
     Write-Host '[OK] Rust/Cargo found: ' -NoNewline -ForegroundColor Green
-    Write-Host "$CargoVersion (Native Tauri desktop builds enabled)"
+    Write-Host $CargoVersion
+    Write-Host '     Native Tauri builds also need the MSVC C++ build tools and WebView2:' -ForegroundColor DarkGray
+    Write-Host '     https://tauri.app/start/prerequisites/' -ForegroundColor DarkGray
 } else {
     Write-Host '[info] Rust/Cargo not detected.' -ForegroundColor Yellow
-    Write-Host '       Web development mode (.\windows\run.ps1 -Web) is fully functional without Rust.' -ForegroundColor Cyan
-    Write-Host '       To build the native Tauri desktop package, install Rust: https://rustup.rs' -ForegroundColor DarkGray
+    Write-Host '       Web development mode (.\windows\run.ps1 -Web) works without Rust.' -ForegroundColor Cyan
+    Write-Host '       For the native window, install Rust (https://rustup.rs) plus the' -ForegroundColor DarkGray
+    Write-Host '       "Desktop development with C++" workload from Visual Studio Build Tools.' -ForegroundColor DarkGray
 }
 
 # 6. Install Dependencies
@@ -122,7 +140,8 @@ if (-not $SkipInstall) {
     try {
         & $BunExe install --frozen-lockfile
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "bun install failed with exit code $LASTEXITCODE"
+            Write-Host "[Error] bun install failed with exit code $LASTEXITCODE" -ForegroundColor Red
+            Write-Host '        Check the error above; bun.lock is kept as-is.' -ForegroundColor Yellow
             exit $LASTEXITCODE
         }
         Write-Host '[OK] Dependencies installed successfully.' -ForegroundColor Green
@@ -138,7 +157,8 @@ Push-Location $RepoRoot
 try {
     & $BunExe run --cwd packages/db embed
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Database migration embed failed with exit code $LASTEXITCODE"
+        Write-Host "[Error] Database migration embed failed with exit code $LASTEXITCODE" -ForegroundColor Red
+        Write-Host '        The compiled server would start without migrations; fix the error above.' -ForegroundColor Yellow
         exit $LASTEXITCODE
     }
     Write-Host '[OK] Migrations embedded.' -ForegroundColor Green
@@ -152,10 +172,10 @@ Write-Host '    Sheet Windows Setup Complete!       ' -ForegroundColor Green
 Write-Host '========================================' -ForegroundColor Green
 Write-Host ''
 Write-Host 'To start developing:' -ForegroundColor Cyan
-Write-Host '  .\windows\run.ps1 -Web         # Launch visual canvas in default browser' -ForegroundColor White
-Write-Host '  .\windows\run.ps1 -ServerOnly  # Run local server & MCP endpoint on :4100' -ForegroundColor White
+Write-Host '  .\windows\run.ps1 -Web         # Canvas in your browser (no Rust needed)' -ForegroundColor White
+Write-Host '  .\windows\run.ps1 -ServerOnly  # Local server and MCP endpoint on :4100' -ForegroundColor White
 if ($HasCargo) {
-    Write-Host '  .\windows\run.ps1 -Desktop     # Launch native Tauri window' -ForegroundColor White
+    Write-Host '  .\windows\run.ps1 -Desktop     # Native Tauri window' -ForegroundColor White
 }
 Write-Host ''
 exit 0

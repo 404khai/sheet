@@ -1,4 +1,5 @@
-import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { mkdir, open, readFile, rename, rm } from 'node:fs/promises'
 import { homedir, platform } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -76,23 +77,54 @@ async function readText(path: string) {
   }
 }
 
-/** Write beside the target, then rename, so a crash never leaves half a config. */
+/** Windows returns these while an indexer or an antivirus scan holds the file. */
+const LOCK_CODES = new Set(['EBUSY', 'EACCES', 'EPERM'])
+const REPLACE_ATTEMPTS = 5
+
+function isLockError(error: unknown) {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    typeof error.code === 'string' &&
+    LOCK_CODES.has(error.code)
+  )
+}
+
+/**
+ * Renames over the target, retrying while Windows holds a transient lock on it.
+ * The target is never removed first: a failed replacement has to leave the
+ * previous configuration exactly where it was.
+ */
+async function replaceFile(temp: string, path: string) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await rename(temp, path)
+      return
+    } catch (error) {
+      if (!isLockError(error) || attempt + 1 >= REPLACE_ATTEMPTS) throw error
+      await new Promise((resolve) => setTimeout(resolve, 25 * 2 ** attempt))
+    }
+  }
+}
+
+/**
+ * Write beside the target, then rename, so a crash never leaves half a config.
+ * Each call writes its own exclusively created temporary file, so concurrent
+ * installs cannot publish each other's content.
+ */
 export async function writeAtomic(path: string, text: string) {
   await mkdir(dirname(path), { recursive: true })
-  const temp = `${path}.sheet-${process.pid}-${Date.now()}.tmp`
-  await writeFile(temp, text, 'utf8')
+  const temp = `${path}.sheet-${process.pid}-${randomUUID()}.tmp`
+  const handle = await open(temp, 'wx')
   try {
-    await rename(temp, path)
-  } catch {
-    // On Windows, rename over an existing file can throw EPERM/EBUSY.
-    // Try unlink + rename fallback, then copyFile + cleanup if rename is blocked.
     try {
-      await rm(path, { force: true })
-      await rename(temp, path)
-    } catch {
-      await copyFile(temp, path)
-      await rm(temp, { force: true }).catch(() => {})
+      await handle.writeFile(text, 'utf8')
+    } finally {
+      await handle.close()
     }
+    await replaceFile(temp, path)
+  } finally {
+    await rm(temp, { force: true }).catch(() => {})
   }
 }
 

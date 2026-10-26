@@ -122,6 +122,7 @@ describe('MCP web transactions', () => {
       designId,
       expectedRevision: 0,
       transaction,
+      // The tool returns only the summary unless the full document is asked for.
       verbose: true,
     })
     const body = textResult(result)
@@ -189,6 +190,7 @@ describe('MCP web transactions', () => {
     const result = textResult(await execute('applyWebTransaction', {
       designId,
       expectedRevision: 0,
+      // This assertion reads the document back, which needs the verbose reply.
       verbose: true,
       transaction: {
         id: 'resize-page',

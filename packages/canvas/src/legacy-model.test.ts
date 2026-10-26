@@ -157,7 +157,7 @@ describe('CanvasDocument', () => {
     const result = validateDocument(document)
     const duration = performance.now() - started
     expect(result.ok).toBe(true)
-    expect(duration).toBeLessThan(1000)
+    expect(duration).toBeLessThan(300)
   })
 
   it('reports every component that can reach an instance cycle', () => {
