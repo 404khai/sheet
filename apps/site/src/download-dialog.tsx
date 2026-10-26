@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { play } from 'cuelume'
+import { downloadUrl, type DownloadTarget } from './download'
 
 /** Sheet is ad-hoc signed, not notarized, so macOS quarantines the first copy it downloads. */
 export const UNQUARANTINE = 'sudo xattr -rd com.apple.quarantine /Applications/Sheet.app'
@@ -17,23 +18,25 @@ function startDownload(href: string) {
 }
 
 /**
- * Shown when Download is pressed. It says why macOS will object to the app and
- * gives the one command that fixes it, then starts the download itself after a
- * short countdown, so the command is read before the file arrives.
+ * Shown when Download is pressed. It says why the system will object to the app
+ * and, on macOS, gives the one command that fixes it, then starts the download
+ * itself after a short countdown, so the instruction is read before the file
+ * arrives.
  */
 export function DownloadDialog({
   open,
-  href,
+  target,
   onClose,
 }: {
   open: boolean
-  href: string
+  target: DownloadTarget
   onClose: () => void
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const [left, setLeft] = useState(COUNTDOWN_SECONDS)
   const [started, setStarted] = useState(false)
   const [copied, setCopied] = useState(false)
+  const href = downloadUrl(target)
 
   useEffect(() => {
     const dialog = ref.current
@@ -84,20 +87,37 @@ export function DownloadDialog({
     >
       <div className="dialog-panel">
         <h2 id="download-title">Before you open Sheet</h2>
-        <p className="muted">
-          Sheet is not signed by Apple yet, so macOS will refuse to open it the first time. After
-          you drag it into Applications, run this once in Terminal:
-        </p>
+        {target === 'macos' ? (
+          <>
+            <p className="muted">
+              Sheet is not signed by Apple yet, so macOS will refuse to open it the first time. After
+              you drag it into Applications, run this once in Terminal:
+            </p>
 
-        <div className="code">
-          <code>{UNQUARANTINE}</code>
-          <button type="button" className="button button-small" data-cuelume-tap onClick={() => void copy()}>
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-        </div>
+            <div className="code">
+              <code>{UNQUARANTINE}</code>
+              <button
+                type="button"
+                className="button button-small"
+                data-cuelume-tap
+                onClick={() => void copy()}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="muted">
+            Sheet is not code-signed yet, so Windows SmartScreen will warn about an unrecognised app
+            the first time. Click <strong>More info</strong> in the warning, then{' '}
+            <strong>Run anyway</strong>.
+          </p>
+        )}
 
         <p className="muted dialog-note">
-          Only the first install needs it. After that, Sheet updates itself. Apple Silicon Macs only.
+          Only the first {target === 'macos' ? 'install' : 'launch'} needs it. After that, Sheet
+          updates itself.{' '}
+          {target === 'macos' ? 'Apple Silicon Macs only.' : 'Windows 10 or 11, 64-bit.'}
         </p>
 
         <div className="dialog-foot">

@@ -1,8 +1,9 @@
 name: Release
 
-# Publishing a GitHub release builds the Apple Silicon app and attaches it, plus
-# the signed update bundle and `latest.json` the in-app updater reads, to that
-# same release. The app version comes from the tag, so there is nothing to bump.
+# Publishing a GitHub release builds the Apple Silicon app and the Windows x64
+# app, and attaches both, plus the signed update bundles and the `latest.json`
+# the in-app updater reads, to that same release. The app version comes from the
+# tag, so there is nothing to bump.
 
 on:
   release:
@@ -81,3 +82,67 @@ jobs:
           dmg="$(ls apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg | head -1)"
           cp "$dmg" Sheet-macos-arm64.dmg
           gh release upload "$TAG" Sheet-macos-arm64.dmg --clobber --repo "${{ github.repository }}"
+
+  # Serialized after macOS so both tauri-action runs merge their platform entry
+  # into the same `latest.json` instead of each writing a file with one platform.
+  build-windows:
+    name: Windows x64
+    needs: build-macos
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag must use the vX.Y.Z format, got $TAG"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - run: bun install --frozen-lockfile
+
+      # NSIS only: the updater reads the NSIS entry from `latest.json`, and a
+      # single installer keeps the fixed-name download unambiguous. Updates use
+      # the same minisign key as macOS.
+      - name: Build and attach to the release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: bunx tauri
+          tagName: ${{ steps.version.outputs.tag }}
+          releaseDraft: false
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: --target x86_64-pc-windows-msvc --bundles nsis --config '{"version":"${{ steps.version.outputs.version }}"}'
+
+      # The installer is named after its version; the website links to a fixed name.
+      - name: Add the fixed-name download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          installer="$(ls apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe | head -1)"
+          cp "$installer" Sheet-windows-x64.exe
+          gh release upload "$TAG" Sheet-windows-x64.exe --clobber --repo "${{ github.repository }}"

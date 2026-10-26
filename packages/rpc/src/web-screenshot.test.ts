@@ -32,8 +32,10 @@ function fakeWindow() {
   const unregister = registerCapturer({
     send: (request) => {
       requests.push(request)
+      // A subtree capture is only as wide as the subtree; the window measures it.
+      const width = request.rootId === null ? request.width : 400
       queueMicrotask(() =>
-        completeCapture(request.id, { ok: true, bytes, mimeType: 'image/png', width: request.width, height: 600 }),
+        completeCapture(request.id, { ok: true, bytes, mimeType: 'image/png', width, height: 600 }),
       )
     },
   })
@@ -129,59 +131,65 @@ describe('web screenshots', () => {
       .where(and(eq(designVersion.designId, designId), eq(designVersion.userId, LOCAL_USER_ID)))
 
     const window = fakeWindow()
-    const { renderWebScreenshot } = await import('@sheet/rpc/mcp-screenshot')
-    const full = await renderWebScreenshot(LOCAL_USER_ID, document, { width: 800 })
-    expect(full.png.byteLength).toBeGreaterThan(1_000)
-    expect(full.width).toBe(800)
-    expect(full.height).toBeGreaterThan(0)
-    expect(full.rootId).toBeNull()
-    expect(window.requests[0]?.html).toContain('data-sheet-export-root="true"')
+    try {
+      const { renderWebScreenshot } = await import('@sheet/rpc/mcp-screenshot')
+      const full = await renderWebScreenshot(LOCAL_USER_ID, document, { width: 800 })
+      expect(full.png.byteLength).toBeGreaterThan(1_000)
+      expect(full.width).toBe(800)
+      expect(full.height).toBeGreaterThan(0)
+      expect(full.rootId).toBeNull()
+      expect(window.requests[0]?.html).toContain('data-sheet-export-root="true"')
 
-    const scoped = await renderWebScreenshot(LOCAL_USER_ID, document, { rootId: 'title' })
-    expect(scoped.rootId).toBe('title')
-    expect(window.requests[1]?.rootId).toBe('title')
-    expect(scoped.width).toBeLessThanOrEqual(full.width)
-    await expect(
-      renderWebScreenshot(LOCAL_USER_ID, document, { rootId: 'missing' }),
-    ).rejects.toThrow('does not exist')
+      const scoped = await renderWebScreenshot(LOCAL_USER_ID, document, { rootId: 'title' })
+      expect(scoped.rootId).toBe('title')
+      expect(window.requests[1]?.rootId).toBe('title')
+      expect(scoped.width).toBeLessThanOrEqual(full.width)
+      await expect(
+        renderWebScreenshot(LOCAL_USER_ID, document, { rootId: 'missing' }),
+      ).rejects.toThrow('does not exist')
 
-    const stored = await db
-      .select({ revision: design.revision, document: design.canvasDocument })
-      .from(design)
-      .where(and(eq(design.id, designId), eq(design.userId, LOCAL_USER_ID)))
-      .limit(1)
-      .then((rows) => rows[0])
-    expect(stored?.revision).toBe(0)
-    expect(JSON.stringify(stored?.document)).toBe(before)
-    const versionsAfter = await db
-      .select({ id: designVersion.id })
-      .from(designVersion)
-      .where(and(eq(designVersion.designId, designId), eq(designVersion.userId, LOCAL_USER_ID)))
-    expect(versionsAfter).toEqual(versionsBefore)
-    window.unregister()
+      const stored = await db
+        .select({ revision: design.revision, document: design.canvasDocument })
+        .from(design)
+        .where(and(eq(design.id, designId), eq(design.userId, LOCAL_USER_ID)))
+        .limit(1)
+        .then((rows) => rows[0])
+      expect(stored?.revision).toBe(0)
+      expect(JSON.stringify(stored?.document)).toBe(before)
+      const versionsAfter = await db
+        .select({ id: designVersion.id })
+        .from(designVersion)
+        .where(and(eq(designVersion.designId, designId), eq(designVersion.userId, LOCAL_USER_ID)))
+      expect(versionsAfter).toEqual(versionsBefore)
+    } finally {
+      window.unregister()
+    }
   }, 60_000)
 
   it('exposes the render through the MCP envelope with revision metadata', async () => {
     const designId = await seedDesign(shotFixture())
     const execute = createSheetToolExecutor(LOCAL_USER_ID, usage())
     const window = fakeWindow()
-    const result = await execute('getWebScreenshot', { designId, width: 800 }) as {
-      isError?: boolean
-      content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>
+    try {
+      const result = await execute('getWebScreenshot', { designId, width: 800 }) as {
+        isError?: boolean
+        content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>
+      }
+      expect(result.isError).not.toBe(true)
+      const metadata = JSON.parse(result.content[0]?.text ?? '{}') as Record<string, unknown>
+      expect(metadata).toMatchObject({
+        mimeType: 'image/png',
+        width: 800,
+        revision: 0,
+        target: { designId, draftId: null, rootId: null },
+      })
+      const image = result.content[1]
+      expect(image?.type).toBe('image')
+      expect(image?.mimeType).toBe('image/png')
+      expect((image?.data ?? '').length).toBeGreaterThan(1_000)
+    } finally {
+      window.unregister()
     }
-    expect(result.isError).not.toBe(true)
-    const metadata = JSON.parse(result.content[0]?.text ?? '{}') as Record<string, unknown>
-    expect(metadata).toMatchObject({
-      mimeType: 'image/png',
-      width: 800,
-      revision: 0,
-      target: { designId, draftId: null, rootId: null },
-    })
-    const image = result.content[1]
-    expect(image?.type).toBe('image')
-    expect(image?.mimeType).toBe('image/png')
-    expect((image?.data ?? '').length).toBeGreaterThan(1_000)
-    window.unregister()
   }, 60_000)
 
   it('says so plainly when no Sheet window is open', async () => {

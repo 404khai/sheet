@@ -15,7 +15,7 @@ describe('MCP tool manifest', () => {
     expect(names).toHaveLength(32)
     expect(names[0]).toBe('getUsage')
     expect(names).not.toContain('getScreenshot')
-    expect(names).not.toContain('createPage')
+    expect(names).not.toContain('patchNodes')
     expect(names).not.toContain('insertNodes')
     expect(names).toContain('getWebDocument')
     expect(names).toContain('getWebHTML')

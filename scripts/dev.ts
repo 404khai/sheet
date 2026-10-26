@@ -10,6 +10,7 @@ import { join } from 'node:path'
  * Flags:
  *   --server-only   just the local server (API + MCP)
  *   --desktop-only  just the Tauri window (expects a server already up)
+ *   --web           the visual canvas in a browser (no Rust toolchain)
  *
  * Env: SHEET_MCP_PORT (4100), SHEET_SQLITE_PATH (./data/sheet.db).
  * If a server is already listening, it is reused, not replaced.
@@ -20,6 +21,8 @@ const port = process.env.SHEET_MCP_PORT?.trim() || '4100'
 const serverUrl = `http://127.0.0.1:${port}`
 const serverOnly = process.argv.includes('--server-only')
 const desktopOnly = process.argv.includes('--desktop-only')
+const webOnly = process.argv.includes('--web')
+const bunBin = process.execPath
 
 process.env.SHEET_SQLITE_PATH ??= join(root, 'data', 'sheet.db')
 
@@ -78,15 +81,23 @@ if (!desktopOnly) {
   if (await serverUp()) {
     console.info('[dev] local server already running — reusing it')
   } else {
-    spawn('local server', ['bun', 'run', '--cwd', 'apps/mcp', 'dev'])
+    spawn('local server', [bunBin, 'run', '--cwd', 'apps/mcp', 'dev'])
     await waitForServer()
     console.info('[dev] local server ready')
   }
 }
 
-if (!serverOnly) {
+if (webOnly) {
   await waitForServer()
-  const desktop = spawn('desktop', ['bun', 'run', '--cwd', 'apps/desktop', 'dev'])
+  // The browser interface talks to the local server directly, so its proxy has
+  // to follow SHEET_MCP_PORT instead of the Tauri host's fixed :4300.
+  process.env.SHEET_DESKTOP_PORT = port
+  const web = spawn('web interface', [bunBin, 'run', '--cwd', 'apps/desktop', 'dev:web'])
+  await web.exited
+  await shutdown(web.exitCode ?? 0)
+} else if (!serverOnly) {
+  await waitForServer()
+  const desktop = spawn('desktop', [bunBin, 'run', '--cwd', 'apps/desktop', 'dev'])
   await desktop.exited
   await shutdown(desktop.exitCode ?? 0)
 } else {

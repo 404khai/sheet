@@ -167,6 +167,7 @@ main > section,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   height: 2.75rem;
   padding-inline: 1.5rem;
   border: 1px solid var(--input);
@@ -176,6 +177,13 @@ main > section,
     background var(--duration-base) ease,
     border-color var(--duration-base) ease,
     transform var(--duration-fast) ease;
+}
+
+/* The platform mark on a download button, sized to the label's cap height. */
+.mark {
+  flex: none;
+  width: 0.875em;
+  height: 0.875em;
 }
 
 .button:hover {

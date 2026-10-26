@@ -48,7 +48,7 @@ describe('page name and stage colour', () => {
       { type: 'node.insert', node: page },
       { type: 'node.insert', node: bounded },
     ]).document
-    expect(compileWebCodeHtml(plain)).not.toContain('background:#')
+    expect(compileWebCodeHtml(plain)).not.toContain('body{background:')
     expect(compileWebStandaloneHtml(plain)).not.toContain('!important')
 
     const colored = apply(plain, [
