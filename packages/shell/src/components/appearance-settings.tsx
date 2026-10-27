@@ -21,6 +21,18 @@ import {
   type UiScale,
 } from '../lib/ui-scale'
 import {
+  DEFAULT_UI_FONT,
+  DEFAULT_UI_FONT_WEIGHT,
+  getUiFont,
+  getUiFontWeight,
+  setUiFont,
+  setUiFontWeight,
+  UI_FONTS,
+  UI_FONT_WEIGHTS,
+  type UiFontId,
+  type UiFontWeightValue,
+} from '../lib/ui-font'
+import {
   DEFAULT_SOUND,
   DEFAULT_VOLUME,
   getSoundPreference,
@@ -162,14 +174,21 @@ export function AppearanceSettings({
   const [theme, setTheme] = useState<ThemePreference>(DEFAULT_THEME)
   const [accent, setAccentState] = useState<AccentId>(DEFAULT_ACCENT)
   const [scale, setScale] = useState<UiScale>(DEFAULT_UI_SCALE)
+  const [font, setFontState] = useState<UiFontId>(DEFAULT_UI_FONT)
+  const [fontWeight, setFontWeightState] = useState<UiFontWeightValue>(DEFAULT_UI_FONT_WEIGHT)
+  const [fontFilter, setFontFilter] = useState<'All' | 'Sans Serif' | 'Monospace' | 'Display'>('All')
 
   useEffect(() => {
     setTheme(getThemePreference())
     setAccentState(getAccent())
     setScale(getUiScale())
+    setFontState(getUiFont())
+    setFontWeightState(getUiFontWeight())
   }, [])
 
   const scaleIndex = Math.max(0, UI_SCALES.indexOf(scale))
+  const fontWeightIndex = Math.max(0, UI_FONT_WEIGHTS.findIndex((w) => w.value === fontWeight))
+  const displayFonts = fontFilter === 'All' ? UI_FONTS : UI_FONTS.filter((f) => f.category === fontFilter)
 
   return (
     <div className={cn('flex flex-col gap-6', className)}>
@@ -242,6 +261,137 @@ export function AppearanceSettings({
         </div>
         <p className="font-mono text-xs text-muted-foreground mt-1">
           Active: <span className="font-medium text-foreground">{ACCENTS.find((option) => option.id === accent)?.label}</span>
+        </p>
+      </Section>
+
+      <Section
+        label="UI Font"
+        hint="Sets the typography across all interface panels, tools, inspector, and desktop chrome."
+      >
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Font categories">
+          {(['All', 'Sans Serif', 'Monospace', 'Display'] as const).map((cat) => {
+            const active = fontFilter === cat
+            return (
+              <button
+                key={cat}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setFontFilter(cat)}
+                className={cn(
+                  'cx-press rounded-lg px-2.5 py-1 text-xs transition-all duration-150 outline-none',
+                  active
+                    ? 'bg-surface font-semibold text-foreground shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)] ring-1 ring-border/70'
+                    : 'text-muted-foreground hover:bg-surface-2/60 hover:text-foreground',
+                )}
+              >
+                {cat}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5 max-h-[340px] overflow-y-auto pr-0.5" role="radiogroup" aria-label="UI Font family">
+          {displayFonts.map((option) => {
+            const selected = font === option.id
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={cn(
+                  'cx-press group relative flex flex-col justify-between rounded-xl p-3 text-start outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring',
+                  selected
+                    ? 'bg-surface text-foreground font-medium ring-2 ring-cx-accent shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] scale-[1.01]'
+                    : 'bg-surface-2/60 text-muted-foreground border border-line/70 hover:border-line hover:text-foreground hover:bg-surface/70 hover:shadow-xs active:scale-[0.99]',
+                )}
+                onClick={() => {
+                  setFontState(option.id)
+                  setUiFont(option.id)
+                }}
+              >
+                <div className="flex items-center justify-between gap-1 w-full">
+                  <span className="text-xs font-semibold text-foreground truncate">
+                    {option.label}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="rounded bg-well/80 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground border border-border/40">
+                      {option.category === 'Sans Serif' ? 'Sans' : option.category === 'Monospace' ? 'Mono' : 'Display'}
+                    </span>
+                    {selected && (
+                      <span className="size-1.5 rounded-full bg-cx-accent shadow-[0_0_6px_var(--cx-accent)] animate-pulse" />
+                    )}
+                  </div>
+                </div>
+                <div
+                  className="mt-2 text-xs text-foreground/90 truncate leading-relaxed"
+                  style={{ fontFamily: option.stack }}
+                >
+                  {option.previewText ?? 'Aa Bb Gg 123 — Clean typography'}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+        <p className="font-mono text-xs text-muted-foreground mt-0.5">
+          Active Font: <span className="font-medium text-foreground">{UI_FONTS.find((f) => f.id === font)?.label}</span>
+        </p>
+      </Section>
+
+      <Section
+        label="Font weight"
+        hint="Sets typographic weight for all fonts across UI panels, tools, inspector and dialogs."
+      >
+        <div
+          className="relative grid grid-cols-5 rounded-2xl bg-well/90 p-1 ring-1 ring-border/50 shadow-inner"
+          role="radiogroup"
+          aria-label="Font weight"
+        >
+          {/* One marker that slides between stops */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 start-0 w-1/5 p-1 transition-transform duration-200 ease-smooth motion-reduce:transition-none"
+            style={{ transform: `translateX(${fontWeightIndex * 100}%)` }}
+          >
+            <span className="block size-full rounded-xl bg-surface shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50" />
+          </span>
+          {UI_FONT_WEIGHTS.map((option) => {
+            const selected = fontWeight === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={cn(
+                  'relative z-10 flex h-14 flex-col items-center justify-center gap-1 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring',
+                  selected ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground',
+                )}
+                onClick={() => {
+                  setFontWeightState(option.value)
+                  setUiFontWeight(option.value)
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="leading-none text-base transition-all"
+                  style={{ fontWeight: option.value }}
+                >
+                  Aa
+                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] font-medium leading-none">{option.label}</span>
+                  <span className="font-mono text-[9px] tabular-nums text-muted-foreground opacity-75">
+                    {option.value}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+        <p className="font-mono text-xs text-muted-foreground mt-0.5">
+          Active Weight: <span className="font-medium text-foreground">{UI_FONT_WEIGHTS.find((w) => w.value === fontWeight)?.label} ({fontWeight})</span>
         </p>
       </Section>
 

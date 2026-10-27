@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { syncThemePreference } from '@sheet/shell/lib/theme'
 import { syncAccent } from '@sheet/shell/lib/accent'
 import { syncUiScale } from '@sheet/shell/lib/ui-scale'
+import { syncUiFont } from '@sheet/shell/lib/ui-font'
 import { initSound } from '@sheet/ui/sound'
 import { ToastProvider } from '@sheet/ui/toast'
 import { startAutoUpdate } from '@sheet/shell/lib/updates'
@@ -35,6 +36,7 @@ function SettingsRoot() {
   useEffect(() => syncThemePreference(), [])
   useEffect(() => syncAccent(), [])
   useEffect(() => syncUiScale(), [])
+  useEffect(() => syncUiFont(), [])
   useEffect(() => initSound(), [])
   useEffect(() => {
     document.getElementById('boot-splash')?.remove()
@@ -56,6 +58,7 @@ function AppRoot({ pathname }: { pathname: string }) {
   useEffect(() => syncThemePreference(), [])
   useEffect(() => syncAccent(), [])
   useEffect(() => syncUiScale(), [])
+  useEffect(() => syncUiFont(), [])
   useEffect(() => initSound(), [])
   useEffect(() => startAutoUpdate(), [])
   useCaptureResponder()

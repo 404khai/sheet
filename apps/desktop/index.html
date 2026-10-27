@@ -7,6 +7,9 @@
     <meta name="theme-color" content="#212121" />
     <!-- Self-hosted, and byte-identical to what the web app loads. -->
     <link rel="stylesheet" href="/vendor/fonts.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/open-runde@5.3.0/index.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-sans@2.1.1/index.css" />
     <style>
       /* Boot splash: shown while the bundle parses and React mounts, so the
          window never sits blank. Pure CSS — no JS dependency. React removes
@@ -88,6 +91,35 @@
         var accent = localStorage.getItem('sheet:accent')
         if (['blue', 'violet', 'green', 'pink', 'teal'].indexOf(accent) > -1) {
           document.documentElement.setAttribute('data-accent', accent)
+        }
+      } catch (error) {}
+      // The UI font family and weight: no flash of unstyled font.
+      try {
+        var font = localStorage.getItem('sheet:ui-font')
+        var fontMap = {
+          'paper-mono': "'Paper Mono', ui-monospace, Menlo, monospace",
+          'open-runde': "'Open Runde', -apple-system, sans-serif",
+          'geist': "'Geist', -apple-system, sans-serif",
+          'geist-mono': "'Geist Mono', ui-monospace, monospace",
+          'onest': "'Onest', -apple-system, sans-serif",
+          'cal-sans': "'Cal Sans', -apple-system, sans-serif",
+          'inter': "'Inter', -apple-system, sans-serif",
+          'dm-sans': "'DM Sans', sans-serif",
+          'manrope': "'Manrope', sans-serif",
+          'space-grotesk': "'Space Grotesk', sans-serif",
+          'outfit': "'Outfit', sans-serif",
+          'jetbrains-mono': "'JetBrains Mono', monospace",
+          'fira-code': "'Fira Code', monospace",
+          'system': "-apple-system, BlinkMacSystemFont, sans-serif"
+        }
+        if (font && fontMap[font]) {
+          document.documentElement.style.setProperty('--sheet-font-sans', fontMap[font])
+          document.documentElement.style.setProperty('--ui-font-family', fontMap[font])
+        }
+        var weight = localStorage.getItem('sheet:ui-font-weight')
+        if (weight && weight !== '400') {
+          document.documentElement.style.setProperty('--ui-font-weight', weight)
+          document.documentElement.style.fontWeight = weight
         }
       } catch (error) {}
     </script>
