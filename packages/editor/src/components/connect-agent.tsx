@@ -286,7 +286,7 @@ export function ConnectAgent({ className }: { className?: string }) {
     <div className={cn('flex min-w-0 flex-col gap-5', className)}>
       {/* Live endpoint */}
       <div
-        className="flex min-w-0 items-center gap-3 rounded-xl border border-line px-3 py-2.5"
+        className="flex min-w-0 items-center gap-3 rounded-2xl border border-line/80 bg-surface/80 px-3.5 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm"
         style={{ backgroundImage: 'radial-gradient(120% 140% at 0% 0%, color-mix(in oklab, var(--cx-accent) 14%, transparent), transparent 60%)' }}
       >
         <span className="relative grid size-2 shrink-0 place-items-center" aria-hidden="true">
@@ -295,13 +295,13 @@ export function ConnectAgent({ className }: { className?: string }) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Local MCP endpoint</div>
-          <div className="truncate font-mono text-xs text-foreground">{MCP_URL}</div>
+          <div className="truncate font-mono text-xs text-foreground font-semibold">{MCP_URL}</div>
         </div>
         <CopyButton text={MCP_URL} label="Copy endpoint" />
       </div>
 
       {/* Agent picker */}
-      <div role="tablist" aria-label="Agent" className="grid grid-cols-[repeat(auto-fill,minmax(4.75rem,1fr))] gap-1.5">
+      <div role="tablist" aria-label="Agent" className="grid grid-cols-[repeat(auto-fill,minmax(4.75rem,1fr))] gap-2">
         {AGENTS.map((entry) => {
           const Icon = entry.icon
           const active = entry.key === agent.key
@@ -313,10 +313,10 @@ export function ConnectAgent({ className }: { className?: string }) {
               aria-selected={active}
               onClick={() => setSelected(entry.key)}
               className={cn(
-                'flex min-w-0 flex-col items-center gap-1.5 rounded-lg border px-1.5 py-2.5 text-[11px] transition-all duration-150 active:scale-[0.97]',
+                'flex min-w-0 flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-[11px] transition-all duration-150 active:scale-[0.97]',
                 active
-                  ? 'border-cx-accent/50 bg-cx-accent/10 font-medium text-foreground shadow-xs'
-                  : 'border-line/70 text-muted-foreground hover:border-line hover:bg-secondary/60 hover:text-foreground',
+                  ? 'border-cx-accent bg-surface font-medium text-foreground shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-cx-accent/60 scale-[1.02]'
+                  : 'border-line/70 bg-surface-2/40 text-muted-foreground hover:border-line hover:bg-surface hover:text-foreground hover:shadow-xs',
               )}
             >
               <Icon className="size-5" />
@@ -327,12 +327,12 @@ export function ConnectAgent({ className }: { className?: string }) {
       </div>
 
       {agent.manual ? <ManualSteps steps={agent.manual} /> : <InstallButton key={agent.key} agent={agent} />}
-      {agent.note ?<p className="text-xs leading-relaxed text-muted-foreground">{agent.note}</p> : null}
+      {agent.note ? <p className="text-xs leading-relaxed text-muted-foreground">{agent.note}</p> : null}
 
       <SkillInstall />
 
       {/* First prompt */}
-      <div className="flex flex-col gap-2 border-t border-line pt-4">
+      <div className="flex flex-col gap-2 border-t border-line/70 pt-4">
         <h4 className="text-xs font-medium text-foreground">Try a first prompt</h4>
         <div className="flex flex-col gap-1.5">
           {EXAMPLE_PROMPTS.map((prompt) => (
@@ -340,7 +340,7 @@ export function ConnectAgent({ className }: { className?: string }) {
               key={prompt}
               type="button"
               onClick={() => void copy(prompt)}
-              className="group flex min-w-0 items-center gap-2.5 rounded-lg border border-line/70 px-3 py-2 text-start text-xs text-muted-foreground transition-colors hover:border-line hover:bg-secondary/60 hover:text-foreground"
+              className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-line/70 bg-surface-2/30 px-3.5 py-2.5 text-start text-xs text-muted-foreground transition-all duration-150 hover:border-line hover:bg-surface hover:text-foreground hover:shadow-xs active:scale-[0.99]"
             >
               <span className="min-w-0 flex-1 truncate">{prompt}</span>
               {copied === prompt ? (

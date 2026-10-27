@@ -37,7 +37,7 @@ export function Input({
       className={
         cn(
           !unstyled &&
-            "relative inline-flex w-full rounded-md border border-transparent bg-transparent text-sm text-foreground shadow-[0_0_0_1px_var(--edge)] transition-[box-shadow,background-color] duration-150 ease-smooth hover:shadow-[0_0_0_1px_--alpha(var(--foreground)/24%)] has-focus-visible:shadow-[0_0_0_1px_var(--cx-accent)] has-focus-visible:has-aria-invalid:shadow-[0_0_0_1px_var(--destructive)] has-aria-invalid:shadow-[0_0_0_1px_--alpha(var(--destructive)/60%)] has-autofill:bg-foreground/4 has-disabled:opacity-56 sm:text-xs dark:has-autofill:bg-foreground/8",
+            "relative inline-flex w-full rounded-lg border border-border/80 bg-surface-2/50 text-sm text-foreground shadow-[inset_0_1px_2px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.7)] dark:bg-surface-2/30 dark:border-border/60 dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35),0_1px_0_rgba(255,255,255,0.06)] transition-all duration-150 ease-smooth hover:border-border has-focus-visible:border-cx-accent has-focus-visible:ring-2 has-focus-visible:ring-cx-accent/30 has-focus-visible:has-aria-invalid:border-destructive has-aria-invalid:border-destructive/60 has-autofill:bg-foreground/4 has-disabled:opacity-56 sm:text-xs dark:has-autofill:bg-foreground/8",
           className,
         ) || undefined
       }

@@ -69,14 +69,14 @@ export function FramePresetsPanel({ onPick }: { onPick: (preset: FramePreset) =>
                   <button
                     key={`${group.id}-${preset.name}`}
                     type="button"
-                    className="cx-row group flex h-8 w-full items-center gap-3 ps-5 pe-4 text-xs text-foreground/85 outline-none transition-colors duration-100 hover:bg-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    className="group mx-2 my-0.5 flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-xs text-foreground/85 outline-none transition-all duration-150 hover:bg-surface-2/90 hover:text-foreground hover:shadow-xs active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     onClick={() => onPick(preset)}
                   >
                     <span className="text-muted-foreground transition-colors group-hover:text-cx-accent">
                       <AspectGlyph width={preset.width} height={preset.height} />
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-start">{preset.name}</span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                    <span className="min-w-0 flex-1 truncate text-start font-medium">{preset.name}</span>
+                    <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
                       {preset.width} × {preset.height}
                     </span>
                   </button>

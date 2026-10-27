@@ -6,21 +6,26 @@ import { useOpenTabs } from '../lib/open-tabs'
 import { type ReactNode } from 'react'
 
 /**
- * A tab is just its name on the bar: no cell, no divider, no icon. The open
- * one is set in full ink on a faint pill and carries a small accent square;
- * the rest stay muted until the pointer reaches them.
+ * A tab sits on the bar with tactile elevation and optical refinement.
+ * The active tab is lifted on an elevated plate with a subtle border and glowing accent pip,
+ * while inactive tabs gently lift on hover.
  */
 const tabClassName = (active: boolean) =>
   cn(
-    'relative my-auto flex h-6 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs outline-none transition-colors duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring',
+    'relative my-auto flex h-[26px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]',
     active
-      ? 'bg-foreground/6 text-foreground'
-      : 'text-muted-foreground hover:bg-foreground/4 hover:text-foreground',
+      ? 'bg-surface text-foreground shadow-xs border border-edge/80 font-medium'
+      : 'text-muted-foreground hover:bg-surface/50 hover:text-foreground',
   )
 
-/** The accent square beside the open tab's name. */
+/** The glowing accent pip beside the open tab's name. */
 function ActiveMark({ active }: { active: boolean }) {
-  return active ? <span aria-hidden="true" className="size-1.5 shrink-0 bg-cx-accent" /> : null
+  return active ? (
+    <span
+      aria-hidden="true"
+      className="size-1.5 shrink-0 rounded-full bg-cx-accent shadow-[0_0_6px_var(--cx-accent)]"
+    />
+  ) : null
 }
 
 function TabLink({

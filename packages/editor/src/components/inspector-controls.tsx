@@ -95,7 +95,7 @@ export function AlignmentGrid({
   const activeRow = AXIS.indexOf((column ? justify : align) as (typeof AXIS)[number])
   const activeColumn = AXIS.indexOf((column ? align : justify) as (typeof AXIS)[number])
   return (
-    <div role="group" aria-label="Alignment" className="grid aspect-square w-full grid-cols-3 grid-rows-3 rounded-xl bg-well p-1">
+    <div role="group" aria-label="Alignment" className="grid aspect-square w-full grid-cols-3 grid-rows-3 rounded-xl bg-well/90 p-1 ring-1 ring-border/40 shadow-inner">
       {AXIS.flatMap((_, row) =>
         AXIS.map((__, col) => {
           const active = row === activeRow && col === activeColumn
@@ -107,13 +107,16 @@ export function AlignmentGrid({
               type="button"
               aria-label={`Align ${['top', 'middle', 'bottom'][row]} ${['left', 'center', 'right'][col]}`}
               aria-pressed={active}
-              className="group grid place-items-center rounded-md"
+              className={cn(
+                'group grid place-items-center rounded-lg transition-all duration-150 active:scale-90',
+                active ? 'bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50' : 'hover:bg-surface/50',
+              )}
               onClick={() => onChange({ justify: main, align: cross })}
             >
               <span
                 className={cn(
-                  'rounded-full transition-all',
-                  active ? 'size-2.5 bg-foreground' : 'size-1 bg-muted-foreground/60 group-hover:bg-foreground',
+                  'rounded-full transition-all duration-150',
+                  active ? 'size-2.5 bg-cx-accent shadow-xs' : 'size-1 bg-muted-foreground/60 group-hover:bg-foreground',
                 )}
               />
             </button>
@@ -137,7 +140,7 @@ export function IconToggle<T extends string>({
   onChange: (value: T) => void
 }) {
   return (
-    <div role="group" aria-label={label} className="grid h-8 grid-flow-col auto-cols-fr rounded-xl bg-well p-0.5">
+    <div role="group" aria-label={label} className="grid h-8 grid-flow-col auto-cols-fr rounded-xl bg-well/90 p-0.5 ring-1 ring-border/40 shadow-inner">
       {options.map((option) => (
         <button
           key={option.value}
@@ -146,8 +149,10 @@ export function IconToggle<T extends string>({
           title={option.label}
           aria-pressed={value === option.value}
           className={cn(
-            'grid place-items-center rounded-md text-muted-foreground transition-colors',
-            value === option.value ? 'bg-surface text-foreground shadow-xs ring-1 ring-line' : 'hover:text-foreground',
+            'grid place-items-center rounded-lg text-muted-foreground transition-all duration-150 active:scale-95',
+            value === option.value
+              ? 'bg-surface text-foreground font-medium shadow-[0_1px_3px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50 scale-[1.01]'
+              : 'hover:text-foreground hover:bg-surface/40',
           )}
           onClick={() => onChange(option.value)}
         >

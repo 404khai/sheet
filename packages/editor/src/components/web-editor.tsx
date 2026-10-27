@@ -23,7 +23,9 @@ import {
   LayoutGridIcon,
   ImageIcon,
   LayersIcon,
+  MaximizeIcon,
   MessageSquareIcon,
+  MinusIcon,
   ShapesIcon,
   SlidersHorizontalIcon,
   MousePointer2Icon,
@@ -648,9 +650,11 @@ function PageRow({
   return (
     <div
       className={cn(
-        'group flex h-9 items-center gap-3 px-4 text-[13px] transition-colors',
-        active ? 'bg-secondary text-foreground' : 'text-foreground/80 hover:bg-secondary/60 hover:text-foreground',
-        current && 'font-medium',
+        'group mx-2 my-0.5 flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-xs transition-all duration-150',
+        active
+          ? 'bg-cx-accent/10 text-foreground font-medium ring-1 ring-cx-accent/25 shadow-xs'
+          : 'text-foreground/80 hover:bg-accent/60 hover:text-foreground',
+        current && 'font-semibold',
       )}
     >
       {editing && onRename ? (
@@ -767,12 +771,12 @@ function WebTreeNode({
     <div>
       <div
         className={cn(
-          'group relative flex h-8 cursor-pointer select-none items-center pe-3 text-[13px] transition-colors',
+          'group relative mx-1.5 my-0.5 flex h-7.5 cursor-pointer select-none items-center rounded-lg pe-2.5 text-xs transition-all duration-150',
           isSelected
-            ? 'bg-secondary text-foreground'
-            : 'text-foreground/80 hover:bg-secondary/60 hover:text-foreground',
+            ? 'bg-cx-accent/10 text-foreground font-medium ring-1 ring-cx-accent/25 shadow-xs'
+            : 'text-foreground/80 hover:bg-accent/50 hover:text-foreground',
           hidden && 'opacity-50',
-          dropZone === 'inside' && 'bg-accent shadow-[inset_0_0_0_1px_var(--cx-accent)]',
+          dropZone === 'inside' && 'bg-accent ring-1 ring-cx-accent',
         )}
         style={{ paddingInlineStart: 8 + depth * 16 }}
         draggable={!editing}
@@ -937,7 +941,7 @@ function InspectorInput({
           defaultValue={value}
           placeholder={placeholder}
           className={cn(
-            'h-8 w-full min-w-0 rounded-lg border border-transparent bg-surface-2 px-2.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 hover:border-line focus:border-ring',
+            'h-8 w-full min-w-0 rounded-lg border border-line/70 bg-surface-2/60 px-2.5 text-[12px] font-mono text-foreground outline-none shadow-[inset_0_1px_1.5px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35),0_1px_0_rgba(255,255,255,0.06)] transition-all placeholder:text-muted-foreground/60 hover:border-line focus:border-cx-accent/60 focus:ring-1 focus:ring-cx-accent/40',
             prefix ? 'ps-7' : null,
             suffix ? 'pe-7' : null,
           )}
@@ -987,7 +991,7 @@ function InspectorSelect({
       <select
         aria-label={label}
         value={value}
-        className="h-8 w-full min-w-0 rounded-lg border border-transparent bg-surface-2 px-2 text-[13px] text-foreground outline-none transition-colors hover:border-line focus:border-ring"
+        className="h-8 w-full min-w-0 rounded-lg border border-line/70 bg-surface-2/60 px-2 text-[12px] font-mono text-foreground outline-none shadow-[inset_0_1px_1.5px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35),0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-line focus:border-cx-accent/60 focus:ring-1 focus:ring-cx-accent/40"
         onChange={(event) => onCommit(event.currentTarget.value)}
       >
         <option value="">{placeholder}</option>
@@ -1043,11 +1047,11 @@ function WebToolButton({
       disabled={disabled}
       data-cuelume-select=""
       className={cn(
-        'relative size-8 grid place-items-center rounded-md outline-none transition-[background-color,color,transform] duration-150 ease-smooth active:scale-90 focus-visible:ring-2 focus-visible:ring-ring',
+        'relative size-8.5 grid place-items-center rounded-xl outline-none transition-all duration-150 ease-smooth active:scale-90 focus-visible:ring-2 focus-visible:ring-ring',
         active
-          ? 'bg-accent text-cx-accent'
-          : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-        disabled && 'opacity-40 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground',
+          ? 'bg-cx-accent text-white shadow-sm ring-1 ring-white/25'
+          : 'text-muted-foreground hover:bg-accent/75 hover:text-foreground hover:scale-105',
+        disabled && 'opacity-40 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground hover:scale-100',
       )}
       onClick={(event) => {
         event.stopPropagation()
@@ -2038,8 +2042,34 @@ export function WebCanvasEditor({
     return () => window.clearTimeout(timer)
   }, [])
   const [pagesOpen, setPagesOpen] = useState(true)
+  const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280))
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const isCompact = windowWidth < 1024
+
   const [leftPanelOpen, setLeftPanelOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 1024)
-  const [rightPanelOpen, setRightPanelOpen] = useState(true)
+  const [rightPanelOpen, setRightPanelOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 1024)
+  const [focusMode, setFocusMode] = useState(false)
+  const preFocusRef = useRef({ left: true, right: true })
+  const toggleFocusMode = useCallback(() => {
+    setFocusMode((curr) => {
+      if (!curr) {
+        preFocusRef.current = { left: leftPanelOpen, right: rightPanelOpen }
+        setLeftPanelOpen(false)
+        setRightPanelOpen(false)
+        return true
+      } else {
+        setLeftPanelOpen(preFocusRef.current.left)
+        setRightPanelOpen(preFocusRef.current.right)
+        return false
+      }
+    })
+  }, [leftPanelOpen, rightPanelOpen])
+
+  const [zoomMenuOpen, setZoomMenuOpen] = useState(false)
   const [leftTab, setLeftTab] = useState<'design' | 'theme' | 'assets' | 'icons' | 'comments'>('design')
   const { comments, create: createComment, resolve: resolveComment, remove: removeComment } = useDesignComments(designId)
   const [threadNodeId, setThreadNodeId] = useState<string | null>(null)
@@ -3207,6 +3237,36 @@ export function WebCanvasEditor({
     setNextCamera(fitCamera(width, height) ?? { x: 320, y: 120, zoom: 0.75 })
   }, [fitCamera, setNextCamera])
 
+  const zoomStage = useCallback((factor: number) => {
+    const stage = stageRef.current
+    if (!stage) return
+    const current = cameraRef.current
+    const zoom = Math.min(4, Math.max(0.08, current.zoom * factor))
+    const cx = stage.clientWidth / 2
+    const cy = stage.clientHeight / 2
+    const ratio = zoom / current.zoom
+    setNextCamera({
+      zoom,
+      x: cx - (cx - current.x) * ratio,
+      y: cy - (cy - current.y) * ratio,
+    })
+  }, [setNextCamera])
+
+  const setExactZoom = useCallback((targetZoom: number) => {
+    const stage = stageRef.current
+    if (!stage) return
+    const current = cameraRef.current
+    const zoom = Math.min(4, Math.max(0.08, targetZoom))
+    const cx = stage.clientWidth / 2
+    const cy = stage.clientHeight / 2
+    const ratio = zoom / current.zoom
+    setNextCamera({
+      zoom,
+      x: cx - (cx - current.x) * ratio,
+      y: cy - (cy - current.y) * ratio,
+    })
+  }, [setNextCamera])
+
   // Frame the page once the stage has a real size (never in a zero-size stage).
   useEffect(() => {
     const next = fitCamera(pageSizeRef.current.width, pageSizeRef.current.height)
@@ -3476,6 +3536,11 @@ export function WebCanvasEditor({
           e.preventDefault()
           wrapInFlex()
         }
+        if (e.key === '\\' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault()
+          toggleFocusMode()
+          return
+        }
         if (!e.shiftKey && (e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.altKey) {
           e.preventDefault()
           setTool('comment')
@@ -3499,7 +3564,7 @@ export function WebCanvasEditor({
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [deleteSelected, fitToView, insertElement, insertPenPath, nudgeSelected, redoLast, select, setNextCamera, shortcutConfig, undo, wrapInFlex])
+  }, [deleteSelected, fitToView, insertElement, insertPenPath, nudgeSelected, redoLast, select, setNextCamera, shortcutConfig, toggleFocusMode, undo, wrapInFlex])
 
   /**
    * Copy the selected layer as a PNG. It renders the live document, not the saved
@@ -3605,17 +3670,25 @@ export function WebCanvasEditor({
         </header>
       )}
 
-      {/* Main Workspace Layout */}
+      {/* Main Workspace Layout with Responsive Screen Adaptation */}
       <div className={cn(
-        'grid min-h-0 min-w-0 flex-1',
-        leftPanelOpen && rightPanelOpen && 'grid-cols-[clamp(13rem,20vw,17rem)_minmax(0,1fr)_clamp(15rem,22vw,19rem)]',
-        leftPanelOpen && !rightPanelOpen && 'grid-cols-[clamp(13rem,20vw,17rem)_minmax(0,1fr)]',
-        !leftPanelOpen && rightPanelOpen && 'grid-cols-[minmax(0,1fr)_clamp(15rem,22vw,19rem)]',
-        !leftPanelOpen && !rightPanelOpen && 'grid-cols-[minmax(0,1fr)]',
+        'relative min-h-0 min-w-0 flex-1 overflow-hidden',
+        !isCompact && 'grid',
+        !isCompact && leftPanelOpen && rightPanelOpen && 'grid-cols-[clamp(13rem,20vw,17rem)_minmax(0,1fr)_clamp(15rem,22vw,19rem)]',
+        !isCompact && leftPanelOpen && !rightPanelOpen && 'grid-cols-[clamp(13rem,20vw,17rem)_minmax(0,1fr)]',
+        !isCompact && !leftPanelOpen && rightPanelOpen && 'grid-cols-[minmax(0,1fr)_clamp(15rem,22vw,19rem)]',
+        !isCompact && !leftPanelOpen && !rightPanelOpen && 'grid-cols-[minmax(0,1fr)]',
+        isCompact && 'flex flex-row',
       )}>
         {/* Left Sidebar: Pages, Layers, Theme */}
         {leftPanelOpen ? (
-          <aside aria-label="Layers" className="flex min-h-0 min-w-0 flex-col overflow-hidden border-e border-line bg-surface text-foreground">
+          <aside
+            aria-label="Layers"
+            className={cn(
+              'flex min-h-0 min-w-0 flex-col overflow-hidden border-e border-line bg-surface text-foreground transition-all duration-200',
+              isCompact && 'absolute inset-y-0 start-0 z-40 w-72 shadow-panel-lg backdrop-blur-2xl bg-surface/95',
+            )}
+          >
             {/* The file's name, and the switch that hides this panel. */}
             <div className="flex h-12 shrink-0 items-center justify-between gap-2 ps-4 pe-2.5">
               <div className="flex min-w-0 items-center gap-2.5">
@@ -3633,37 +3706,39 @@ export function WebCanvasEditor({
               </button>
             </div>
 
-            {/* One icon per view. Names live in the tooltip, so nothing truncates. */}
-            <div role="tablist" aria-label="Panel view" className="flex shrink-0 items-stretch border-y border-line">
-              {([
-                { tab: 'design', label: 'Design', Icon: LayersIcon },
-                { tab: 'theme', label: 'Theme', Icon: SlidersHorizontalIcon },
-                { tab: 'assets', label: 'Assets', Icon: ImageIcon },
-                { tab: 'icons', label: 'Icons', Icon: ShapesIcon },
-                { tab: 'comments', label: 'Comments', Icon: MessageSquareIcon },
-              ] as const).map(({ tab, label, Icon }) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={leftTab === tab}
-                  aria-label={tab}
-                  title={label}
-                  data-cuelume-select=""
-                  className={cn(
-                    "relative flex h-8 flex-1 items-center justify-center outline-none transition-colors duration-150 ease-smooth after:absolute after:inset-x-2 after:-bottom-px after:h-px after:origin-center after:bg-cx-accent after:transition-transform after:duration-200 after:ease-smooth after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:after:transition-none",
-                    leftTab === tab
-                      ? 'text-foreground after:scale-x-100'
-                      : 'text-muted-foreground after:scale-x-0 hover:text-foreground',
-                  )}
-                  onClick={() => setLeftTab(tab)}
-                >
-                  <Icon className="size-4" />
-                  {tab === 'comments' && openCommentNodeIds.length > 0 ? (
-                    <span className="absolute right-2 top-1.5 size-1.5 rounded-full bg-cx-accent" />
-                  ) : null}
-                </button>
-              ))}
+            {/* Tactile segmented control for views */}
+            <div className="px-3 py-2 border-b border-line">
+              <div role="tablist" aria-label="Panel view" className="flex h-8 items-center rounded-xl bg-well/75 p-0.5 border border-line/40">
+                {([
+                  { tab: 'design', label: 'Layers', Icon: LayersIcon },
+                  { tab: 'theme', label: 'Theme', Icon: SlidersHorizontalIcon },
+                  { tab: 'assets', label: 'Assets', Icon: ImageIcon },
+                  { tab: 'icons', label: 'Icons', Icon: ShapesIcon },
+                  { tab: 'comments', label: 'Comments', Icon: MessageSquareIcon },
+                ] as const).map(({ tab, label, Icon }) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={leftTab === tab}
+                    aria-label={tab}
+                    title={label}
+                    data-cuelume-select=""
+                    className={cn(
+                      'relative flex h-7 flex-1 items-center justify-center rounded-lg text-xs outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring',
+                      leftTab === tab
+                        ? 'bg-surface text-foreground shadow-xs font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-surface/40',
+                    )}
+                    onClick={() => setLeftTab(tab)}
+                  >
+                    <Icon className="size-3.5" />
+                    {tab === 'comments' && openCommentNodeIds.length > 0 ? (
+                      <span className="absolute right-1.5 top-1 size-1.5 rounded-full bg-cx-accent shadow-[0_0_4px_var(--cx-accent)]" />
+                    ) : null}
+                  </button>
+                ))}
+              </div>
             </div>
             {leftTab === 'design' ? (
               <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
@@ -3915,12 +3990,12 @@ export function WebCanvasEditor({
           }}
           onPointerLeave={() => hover(null)}
         >
-          {/* Floating Vertical Toolbar (Image 2, 3, 4) */}
+          {/* Floating Vertical Toolbar (Precision Island) */}
           <div
             role="toolbar"
             aria-label="Tools"
             data-cuelume-theme="mech"
-            className="absolute left-3 top-3 z-30 flex flex-col items-center gap-0.5 rounded-lg bg-surface p-1 text-foreground shadow-panel"
+            className="absolute left-3.5 top-3.5 z-30 flex flex-col items-center gap-1 rounded-2xl border border-edge/80 bg-surface/85 backdrop-blur-2xl p-1.5 text-foreground shadow-panel-lg ring-1 ring-white/10 dark:ring-white/5"
           >
             <WebToolButton
               label={`Select (${shortcutLabel('tool.select')})`}
@@ -4140,8 +4215,7 @@ export function WebCanvasEditor({
           ) : null}
 
           {/* One name label above every top-level frame. Grab it to move the
-              frame, double-click it to rename. It keeps one DOM node across
-              selection so a drag that starts with a select is not dropped. */}
+              frame, double-click it to rename. */}
           {frameIds.map((id) => {
             const rect = frameRects[id]
             const node = document.nodes[id]
@@ -4152,17 +4226,19 @@ export function WebCanvasEditor({
               <div
                 key={id}
                 className={cn(
-                  'pointer-events-auto absolute z-20 flex h-5 max-w-[min(16rem,100%)] items-center px-1.5 font-mono text-[10px]',
-                  isSelected ? 'bg-cx-accent text-white' : 'text-muted-foreground hover:text-foreground',
+                  'pointer-events-auto absolute z-20 flex h-6 max-w-[min(20rem,100%)] items-center gap-1.5 rounded-t-lg px-2 text-[11px] font-mono tracking-tight transition-[background-color,border-color,color,box-shadow,opacity] duration-150',
+                  isSelected
+                    ? 'bg-cx-accent text-white font-medium shadow-[0_2px_5px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.3)] ring-1 ring-cx-accent/90'
+                    : 'bg-surface/95 backdrop-blur-md text-muted-foreground hover:text-foreground border border-b-0 border-edge shadow-[0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)]',
                 )}
-                style={{ left: rect.left, top: rect.top - 20 }}
+                style={{ left: rect.left, top: rect.top - 24 }}
               >
                 {renamingFrameId === id ? (
                   <input
                     autoFocus
                     aria-label="Frame name"
                     defaultValue={node.attributes[NAME_ATTRIBUTE] ?? label}
-                    className="h-4 w-36 bg-surface px-1 text-[10px] text-foreground outline-none ring-1 ring-cx-accent"
+                    className="h-4.5 w-36 rounded bg-surface px-1.5 text-[11px] text-foreground outline-none ring-1 ring-cx-accent shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]"
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
                     onDoubleClick={(event) => event.stopPropagation()}
@@ -4183,7 +4259,7 @@ export function WebCanvasEditor({
                   />
                 ) : (
                   <div
-                    className="min-w-0 cursor-move select-none truncate"
+                    className="flex min-w-0 cursor-move select-none items-center gap-1.5 truncate"
                     onPointerDown={(event) => {
                       event.stopPropagation()
                       select(id)
@@ -4198,14 +4274,17 @@ export function WebCanvasEditor({
                       setRenamingFrameId(id)
                     }}
                   >
-                    {label}
+                    <span className="truncate">{label}</span>
+                    <span className={cn('text-[9px] opacity-80', isSelected ? 'text-white/90' : 'text-muted-foreground')}>
+                      {Math.round(rect.width / camera.zoom)} × {Math.round(rect.height / camera.zoom)}
+                    </span>
                   </div>
                 )}
               </div>
             )
           })}
 
-          {/* Selection Rect & Handles (Image 4) */}
+          {/* Selection Rect & Handles */}
           {selectionRect ? (
             <div
               className="pointer-events-none absolute border border-cx-accent"
@@ -4228,9 +4307,7 @@ export function WebCanvasEditor({
                 </div>
               )}
 
-              {/* Eight resize handles: four corners and four edges, each pulling
-                  only the sides it sits on. The south-east one keeps the label
-                  the single handle always had. */}
+              {/* Eight resize handles */}
               {bound ? null : RESIZE_HANDLES.map((handle) => (
                 <div
                   key={handle.id}
@@ -4238,7 +4315,7 @@ export function WebCanvasEditor({
                   aria-label={handle.id === 'se' ? 'Resize element' : `Resize from ${handle.label}`}
                   tabIndex={0}
                   className={cn(
-                    'pointer-events-auto absolute z-10 size-2.5 border border-cx-accent bg-white',
+                    'pointer-events-auto absolute z-10 size-2.5 rounded-[2px] border-[1.5px] border-cx-accent bg-white shadow-sm ring-1 ring-black/10 transition-transform hover:scale-125',
                     handle.position,
                     handle.cursor,
                   )}
@@ -4249,8 +4326,8 @@ export function WebCanvasEditor({
                 />
               ))}
 
-              {/* Dimensions badge at bottom center (Image 4: 512 × 512) */}
-              <div className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-cx-accent px-1.5 py-0.5 font-mono text-[10px] font-medium text-white shadow-md">
+              {/* Dimensions badge at bottom center */}
+              <div className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-cx-accent px-2 py-0.5 font-mono text-[10px] font-medium text-white shadow-md ring-1 ring-white/20">
                 {Math.round(selectionRect.width / camera.zoom)} × {Math.round(selectionRect.height / camera.zoom)}
               </div>
             </div>
@@ -4311,25 +4388,181 @@ export function WebCanvasEditor({
               onDelete={removeComment}
             />
           ) : null}
-        </main>
 
-        {/* Right Inspector Panel: Design (Image 2 & 4) */}
-        {rightPanelOpen ? (
-        <aside aria-label="Design" className="flex min-h-0 min-w-0 flex-col overflow-hidden border-s border-line bg-surface text-foreground">
-          <div className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4 text-foreground">
-            <span className="cx-label cx-bracket">{tool === 'frame' ? 'Frame' : 'Design'}</span>
-            {tool === 'frame' ? null : (
+          {/* Empty Canvas Starter Plate */}
+          {frameIds.length === 0 && layerIds.length === 0 ? (
+            <div
+              className="pointer-events-auto absolute left-1/2 top-1/2 z-20 flex w-full max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col items-center rounded-2xl border border-edge/80 bg-surface/90 backdrop-blur-2xl p-6 text-center shadow-panel-lg"
+            >
+              <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-cx-accent/10 text-cx-accent shadow-xs">
+                <FrameIcon className="size-6" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">Canvas is ready</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Select a preset to place your first frame, or press <kbd className="rounded border border-border/60 bg-muted px-1 py-0.5 font-mono text-[10px]">F</kbd> to draw
+              </p>
+              <div className="mt-4 grid w-full grid-cols-2 gap-2">
+                {[
+                  { name: 'iPhone 16', width: 393, height: 852 },
+                  { name: 'MacBook Pro 14″', width: 1512, height: 982 },
+                  { name: 'Slide 16:9', width: 1920, height: 1080 },
+                  { name: 'Square Artboard', width: 1080, height: 1080 },
+                ].map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => insertFrame(preset)}
+                    className="cx-press flex flex-col items-start rounded-xl border border-line bg-surface-2/60 p-2.5 text-start transition-all hover:border-cx-accent/50 hover:bg-surface hover:shadow-xs"
+                  >
+                    <span className="truncate text-xs font-medium text-foreground">{preset.name}</span>
+                    <span className="mt-0.5 text-[10px] text-muted-foreground">
+                      {preset.width} × {preset.height}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Floating Viewport & Zoom Controller Dock */}
+          <div
+            role="region"
+            aria-label="Canvas zoom and view controls"
+            className="absolute bottom-4 end-4 z-30 flex items-center gap-1 rounded-2xl border border-edge/80 bg-surface/85 backdrop-blur-2xl p-1 text-foreground shadow-panel-lg ring-1 ring-white/10 dark:ring-white/5"
+          >
+            <button
+              type="button"
+              aria-label="Zoom out"
+              title="Zoom out"
+              className="flex size-7 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground active:scale-90"
+              onClick={() => zoomStage(0.85)}
+            >
+              <MinusIcon className="size-3.5" />
+            </button>
+
+            <div className="relative">
               <button
                 type="button"
-                disabled={!selectedId || saveStatus === 'saving'}
-                className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                onClick={deleteSelected}
-                title="Delete element"
+                aria-label="Zoom presets"
+                title="Select zoom level"
+                aria-expanded={zoomMenuOpen}
+                className="flex h-7 items-center rounded-xl px-2 font-mono text-[11px] font-medium text-foreground transition-all duration-150 hover:bg-accent/80 active:scale-95"
+                onClick={() => setZoomMenuOpen((open) => !open)}
               >
-                <Trash2Icon className="size-3.5" />
-                <span className="sr-only">Delete selected element</span>
+                {Math.round(camera.zoom * 100)}%
               </button>
-            )}
+              {zoomMenuOpen ? (
+                <div
+                  className="absolute bottom-full end-0 z-40 mb-2 w-36 rounded-xl border border-edge bg-surface/95 backdrop-blur-2xl p-1 text-foreground shadow-panel-lg"
+                >
+                  {[
+                    { label: '50%', zoom: 0.5 },
+                    { label: '100% · 1:1', zoom: 1 },
+                    { label: '200%', zoom: 2 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      className="flex h-7 w-full items-center justify-between rounded-lg px-2 text-xs text-foreground transition-colors hover:bg-accent hover:text-cx-accent"
+                      onClick={() => {
+                        setExactZoom(preset.zoom)
+                        setZoomMenuOpen(false)
+                      }}
+                    >
+                      <span>{preset.label}</span>
+                    </button>
+                  ))}
+                  <div className="my-1 h-px bg-line/80" />
+                  <button
+                    type="button"
+                    className="flex h-7 w-full items-center justify-between rounded-lg px-2 text-xs text-foreground transition-colors hover:bg-accent hover:text-cx-accent"
+                    onClick={() => {
+                      fitToView()
+                      setZoomMenuOpen(false)
+                    }}
+                  >
+                    <span>Fit to view</span>
+                    <kbd className="font-mono text-[9px] text-muted-foreground">⇧1</kbd>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <button
+              type="button"
+              aria-label="Zoom in"
+              title="Zoom in"
+              className="flex size-7 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground active:scale-90"
+              onClick={() => zoomStage(1.15)}
+            >
+              <PlusIcon className="size-3.5" />
+            </button>
+
+            <div className="mx-0.5 h-4 w-px bg-line/80" />
+
+            <button
+              type="button"
+              aria-label="Fit to canvas"
+              title="Fit to canvas (⇧1)"
+              className="flex size-7 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground active:scale-90"
+              onClick={fitToView}
+            >
+              <CropIcon className="size-3.5" />
+            </button>
+
+            <button
+              type="button"
+              aria-label={focusMode ? 'Exit focus mode (\\)' : 'Focus mode / Zen canvas (\\)'}
+              aria-pressed={focusMode}
+              title={focusMode ? 'Exit focus mode (\\)' : 'Focus mode / Zen canvas (\\)'}
+              className={cn(
+                'flex size-7 items-center justify-center rounded-xl transition-all duration-150 active:scale-90',
+                focusMode
+                  ? 'bg-cx-accent text-white shadow-xs'
+                  : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground',
+              )}
+              onClick={toggleFocusMode}
+            >
+              <MaximizeIcon className="size-3.5" />
+            </button>
+          </div>
+        </main>
+
+        {/* Right Inspector Panel: Design */}
+        {rightPanelOpen ? (
+        <aside
+          aria-label="Design"
+          className={cn(
+            'flex min-h-0 min-w-0 flex-col overflow-hidden border-s border-line bg-surface text-foreground transition-all duration-200',
+            isCompact && 'absolute inset-y-0 end-0 z-40 w-80 shadow-panel-lg backdrop-blur-2xl bg-surface/95',
+          )}
+        >
+          <div className="flex h-11 shrink-0 items-center justify-between border-b border-line px-4 text-foreground">
+            <span className="cx-label cx-bracket">{tool === 'frame' ? 'Frame' : 'Design'}</span>
+            <div className="flex items-center gap-1">
+              {tool === 'frame' ? null : (
+                <button
+                  type="button"
+                  disabled={!selectedId || saveStatus === 'saving'}
+                  className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                  onClick={deleteSelected}
+                  title="Delete element"
+                >
+                  <Trash2Icon className="size-3.5" />
+                  <span className="sr-only">Delete selected element</span>
+                </button>
+              )}
+              {isCompact ? (
+                <button
+                  type="button"
+                  aria-label="Close inspector"
+                  className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                  onClick={() => setRightPanelOpen(false)}
+                >
+                  <PanelRightIcon className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
             {tool === 'frame' ? <FramePresetsPanel onPick={insertFrame} /> : (

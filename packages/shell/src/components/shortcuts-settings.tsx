@@ -99,10 +99,10 @@ export function ShortcutsSettings({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold">Keyboard shortcuts</h2>
+          <h2 className="text-sm font-semibold text-foreground">Keyboard shortcuts</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Remap editor actions. Space-hold hand tool stays fixed.
           </p>
@@ -115,7 +115,7 @@ export function ShortcutsSettings({
       {conflicts.length > 0 && (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive-foreground"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive-foreground shadow-xs"
         >
           {conflicts.map((conflict) => (
             <p key={conflict.serialized}>
@@ -130,11 +130,14 @@ export function ShortcutsSettings({
           Object.keys(BUILTIN_META) as BuiltInShortcutId[]
         ).filter((id) => BUILTIN_META[id].group === group.id)
         return (
-          <section key={group.id} className="flex flex-col gap-2">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <section
+            key={group.id}
+            className="flex flex-col gap-2.5 rounded-2xl border border-line/70 bg-surface/80 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-sm"
+          >
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
               {group.label}
             </h3>
-            <ul className="divide-y rounded-lg border">
+            <ul className="divide-y divide-line/60 rounded-xl border border-line/70 bg-surface-2/30">
               {ids.map((id) => {
                 const chords = resolveBuiltIn(id, draft)
                 const isDefault =
@@ -144,18 +147,18 @@ export function ShortcutsSettings({
                 return (
                   <li
                     key={id}
-                    className="flex items-center gap-2 px-3 py-2 text-sm"
+                    className="flex items-center gap-2 px-3 py-2 text-xs"
                   >
-                    <span className="min-w-0 flex-1 truncate">
+                    <span className="min-w-0 flex-1 truncate text-foreground font-medium">
                       {BUILTIN_META[id].label}
                     </span>
                     <button
                       type="button"
                       className={cn(
-                        'rounded-md border px-2 py-1 font-mono text-xs tabular-nums',
+                        'rounded-lg border px-2.5 py-1 font-mono text-xs tabular-nums transition-all duration-150 active:scale-95',
                         isRecording
-                          ? 'border-cx-accent bg-cx-accent/10 text-cx-accent'
-                          : 'bg-secondary/60 hover:bg-secondary',
+                          ? 'border-cx-accent bg-cx-accent/15 text-cx-accent shadow-[0_0_8px_var(--cx-accent)]'
+                          : 'border-border/80 bg-surface text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-surface-2',
                       )}
                       onClick={() => setRecording({ kind: 'builtIn', id })}
                     >

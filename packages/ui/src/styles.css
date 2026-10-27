@@ -84,15 +84,14 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  /* No rounding. Every corner in the chrome is square, so the whole scale is
-     zero and `rounded-*` utilities keep working without drawing a curve. */
-  --radius-xs: 0;
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
-  --radius-2xl: 0;
-  --radius-3xl: 0;
+  /* Concentric radii scale: controls nest inside panels, panels nest inside dialogs */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -573,13 +572,12 @@ body {
    regardless of specificity, so a bare `.bg-surface` out here would silently
    win over `hover:bg-surface-2` and the hover state would never paint. */
 @layer utilities {
-  /* The two radii the token scale cannot reach: `rounded-full` is a literal
-     pill, `rounded` a literal 0.25rem. Squared here, with a root prefix so the
-     override wins regardless of utility order. Canvas content is unaffected;
-     designs carry their own radii in authored CSS, not in these classes. */
-  :root .rounded-full,
-  :root .rounded {
-    border-radius: 0;
+  /* Tactile press feedback */
+  .cx-press {
+    transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), box-shadow 120ms ease;
+  }
+  .cx-press:active {
+    transform: scale(0.96);
   }
 
   .bg-surface {

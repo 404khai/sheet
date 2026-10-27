@@ -172,12 +172,12 @@ function FileCard({
   const isScratchpad = design.name.trim().toLowerCase() === 'scratchpad'
 
   return (
-    <div className="group relative flex flex-col rounded-xl bg-surface p-3 shadow-lift transition-[box-shadow,transform] duration-200 ease-smooth active:scale-[0.99] hover:shadow-lift-hover focus-within:shadow-lift-selected">
+    <div className="group relative flex flex-col rounded-2xl border border-line/70 bg-surface p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 ease-smooth active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] dark:hover:shadow-[0_8px_24px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] focus-within:ring-2 focus-within:ring-cx-accent">
       <Link
         to="/design/$id"
         params={{ id: design.id }}
         aria-label={`Open ${design.name}`}
-        className="absolute inset-0 rounded-xl outline-none"
+        className="absolute inset-0 rounded-2xl outline-none"
       />
       <div className="flex items-start justify-between min-w-0">
         <div className="min-w-0 flex-1 pe-2">
@@ -188,7 +188,7 @@ function FileCard({
             </span>
           </p>
           <div className="mt-2 flex items-center gap-1.5">
-            <span className="truncate text-sm text-foreground">{design.name}</span>
+            <span className="truncate text-sm font-medium text-foreground">{design.name}</span>
             {isScratchpad ? (
               <PencilIcon className="size-3.5 shrink-0 text-muted-foreground" />
             ) : null}
@@ -202,7 +202,7 @@ function FileCard({
         />
       </div>
 
-      <div className="pointer-events-none relative mt-4 aspect-[16/10] w-full overflow-hidden rounded-lg bg-cx-canvas shadow-hairline">
+      <div className="pointer-events-none relative mt-4 aspect-[16/10] w-full overflow-hidden rounded-xl border border-line/60 bg-cx-canvas shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]">
         <div className="size-full">
           <FileCardPreview key={design.revision} designId={design.id} revision={design.revision} />
         </div>
@@ -223,14 +223,14 @@ function FileRow({
   const isScratchpad = design.name.trim().toLowerCase() === 'scratchpad'
 
   return (
-    <div className="cx-row group flex items-center gap-4 border-b border-line px-4 py-3 last:border-b-0 transition-colors duration-fast ease-out hover:bg-accent/50 motion-reduce:transition-none">
+    <div className="cx-row group flex items-center gap-4 border-b border-line px-4 py-3.5 last:border-b-0 transition-colors duration-fast ease-out hover:bg-accent/50 motion-reduce:transition-none">
       <Link
         to="/design/$id"
         params={{ id: design.id }}
         aria-label={`Open ${design.name}`}
         className="absolute inset-0 outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2"
       />
-      <div className="pointer-events-none size-10 shrink-0 overflow-hidden rounded-md bg-cx-canvas shadow-hairline">
+      <div className="pointer-events-none size-10 shrink-0 overflow-hidden rounded-lg border border-line/60 bg-cx-canvas shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)]">
         <FileCardPreview key={design.revision} designId={design.id} revision={design.revision} />
       </div>
       <div className="pointer-events-none min-w-0 flex-1">

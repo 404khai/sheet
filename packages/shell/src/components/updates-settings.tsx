@@ -53,24 +53,28 @@ export function UpdatesSettings({ className }: { className?: string }) {
   const available = phase.name === 'done' && phase.result.status === 'available' ? phase.result : null
 
   return (
-    <div className={cn('flex flex-col gap-10', className)}>
+    <div className={cn('flex flex-col gap-6', className)}>
       <Section label="Version" hint="Updates are signed and checked against a key built into Sheet before they install.">
-        <p className="text-sm tabular-nums">{version ?? '—'}</p>
-        <p
-          role="status"
-          className={cn(
-            'text-xs',
-            phase.name === 'done' && phase.result.status === 'error' ? 'text-destructive-foreground' : 'text-muted-foreground',
-          )}
-        >
-          {statusLine(phase)}
-        </p>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded-lg bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] border border-line/70 text-foreground tabular-nums">
+            v{version ?? '—'}
+          </span>
+          <p
+            role="status"
+            className={cn(
+              'text-xs',
+              phase.name === 'done' && phase.result.status === 'error' ? 'text-destructive-foreground' : 'text-muted-foreground',
+            )}
+          >
+            {statusLine(phase)}
+          </p>
+        </div>
         {available?.notes ? (
-          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground shadow-hairline p-3">
+          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground rounded-xl border border-line/70 bg-surface-2/40 p-3 shadow-inner">
             {available.notes}
           </p>
         ) : null}
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-1">
           {available ? (
             <Button type="button" onClick={() => void installWithToasts(available.version)}>
               Install and restart
