@@ -189,6 +189,7 @@ export function AppearanceSettings({
   const scaleIndex = Math.max(0, UI_SCALES.indexOf(scale))
   const fontWeightIndex = Math.max(0, UI_FONT_WEIGHTS.findIndex((w) => w.value === fontWeight))
   const displayFonts = fontFilter === 'All' ? UI_FONTS : UI_FONTS.filter((f) => f.category === fontFilter)
+  const activeFont = UI_FONTS.find((f) => f.id === font) ?? UI_FONTS[0]
 
   return (
     <div className={cn('flex flex-col gap-6', className)}>
@@ -265,12 +266,56 @@ export function AppearanceSettings({
       </Section>
 
       <Section
-        label="UI Font"
-        hint="Sets the typography across all interface panels, tools, inspector, and desktop chrome."
+        label="UI Typography"
+        hint="Sets the master typeface and physical weight applied universally across all tools, panels, dialogs, and chrome."
       >
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Font categories">
+        {/* Live Typographic Specimen Stage */}
+        <div
+          className="relative overflow-hidden rounded-2xl border border-line/80 bg-gradient-to-b from-surface via-surface to-surface-2/60 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition-all duration-200"
+          style={{ fontFamily: activeFont.stack }}
+        >
+          <div className="flex items-center justify-between pb-3 border-b border-line/60">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-cx-accent shadow-[0_0_8px_var(--cx-accent)] animate-pulse" />
+              <span className="text-sm font-semibold tracking-tight text-foreground">
+                {activeFont.label}
+              </span>
+              <span className="rounded-md bg-well/80 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground border border-border/50">
+                {activeFont.category}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-medium text-foreground shadow-xs border border-line/60">
+                {fontWeight} · {UI_FONT_WEIGHTS.find((w) => w.value === fontWeight)?.label}
+              </span>
+            </div>
+          </div>
+
+          <div
+            className="my-3 text-3xl sm:text-4xl font-normal tracking-tight text-foreground select-none transition-all duration-200"
+            style={{ fontWeight }}
+          >
+            Aa Bb Gg 0123
+          </div>
+
+          <p
+            className="text-xs text-foreground/80 leading-relaxed max-w-xl transition-all duration-200"
+            style={{ fontWeight }}
+          >
+            The quick brown fox jumps over the lazy dog. Crafted interface typography for infinite canvas architecture.
+          </p>
+
+          <div className="mt-3 pt-3 border-t border-line/50 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground/70 tracking-widest uppercase select-none">
+            <span>A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</span>
+            <span className="font-mono text-[9px] tabular-nums">0 1 2 3 4 5 6 7 8 9</span>
+          </div>
+        </div>
+
+        {/* Category Filter Tabs */}
+        <div className="flex items-center gap-1 rounded-xl bg-well/90 p-1 ring-1 ring-border/50 shadow-inner" role="tablist" aria-label="Font categories">
           {(['All', 'Sans Serif', 'Monospace', 'Display'] as const).map((cat) => {
             const active = fontFilter === cat
+            const count = cat === 'All' ? UI_FONTS.length : UI_FONTS.filter((f) => f.category === cat).length
             return (
               <button
                 key={cat}
@@ -279,19 +324,21 @@ export function AppearanceSettings({
                 aria-selected={active}
                 onClick={() => setFontFilter(cat)}
                 className={cn(
-                  'cx-press rounded-lg px-2.5 py-1 text-xs transition-all duration-150 outline-none',
+                  'cx-press flex-1 rounded-lg py-1.5 px-3 text-xs text-center transition-all duration-150 outline-none',
                   active
-                    ? 'bg-surface font-semibold text-foreground shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)] ring-1 ring-border/70'
-                    : 'text-muted-foreground hover:bg-surface-2/60 hover:text-foreground',
+                    ? 'bg-surface font-semibold text-foreground shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)] ring-1 ring-border/60'
+                    : 'text-muted-foreground hover:bg-surface/50 hover:text-foreground',
                 )}
               >
-                {cat}
+                <span>{cat}</span>
+                <span className="ml-1.5 opacity-60 font-mono text-[10px]">({count})</span>
               </button>
             )
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 max-h-[340px] overflow-y-auto pr-0.5" role="radiogroup" aria-label="UI Font family">
+        {/* Font Cards Grid */}
+        <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="UI Font family">
           {displayFonts.map((option) => {
             const selected = font === option.id
             return (
@@ -301,17 +348,17 @@ export function AppearanceSettings({
                 role="radio"
                 aria-checked={selected}
                 className={cn(
-                  'cx-press group relative flex flex-col justify-between rounded-xl p-3 text-start outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring',
+                  'cx-press group relative flex flex-col justify-between rounded-xl p-3.5 text-start outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring',
                   selected
-                    ? 'bg-surface text-foreground font-medium ring-2 ring-cx-accent shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] scale-[1.01]'
-                    : 'bg-surface-2/60 text-muted-foreground border border-line/70 hover:border-line hover:text-foreground hover:bg-surface/70 hover:shadow-xs active:scale-[0.99]',
+                    ? 'bg-surface text-foreground font-medium ring-2 ring-cx-accent shadow-[0_6px_20px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)] scale-[1.015]'
+                    : 'bg-surface-2/40 text-muted-foreground border border-line/70 hover:border-line hover:text-foreground hover:bg-surface hover:shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] active:scale-[0.985]',
                 )}
                 onClick={() => {
                   setFontState(option.id)
                   setUiFont(option.id)
                 }}
               >
-                <div className="flex items-center justify-between gap-1 w-full">
+                <div className="flex items-center justify-between gap-1 w-full pb-2 border-b border-line/40">
                   <span className="text-xs font-semibold text-foreground truncate">
                     {option.label}
                   </span>
@@ -320,33 +367,38 @@ export function AppearanceSettings({
                       {option.category === 'Sans Serif' ? 'Sans' : option.category === 'Monospace' ? 'Mono' : 'Display'}
                     </span>
                     {selected && (
-                      <span className="size-1.5 rounded-full bg-cx-accent shadow-[0_0_6px_var(--cx-accent)] animate-pulse" />
+                      <span className="size-2 rounded-full bg-cx-accent shadow-[0_0_8px_var(--cx-accent)]" />
                     )}
                   </div>
                 </div>
+
                 <div
-                  className="mt-2 text-xs text-foreground/90 truncate leading-relaxed"
+                  className="my-2.5 text-xl font-normal text-foreground/90 tracking-tight select-none truncate"
                   style={{ fontFamily: option.stack }}
                 >
-                  {option.previewText ?? 'Aa Bb Gg 123 — Clean typography'}
+                  Aa Bb Gg 123
+                </div>
+
+                <div
+                  className="text-[11px] text-muted-foreground truncate leading-relaxed"
+                  style={{ fontFamily: option.stack }}
+                >
+                  {option.previewText ?? 'Clean typography'}
                 </div>
               </button>
             )
           })}
         </div>
-        <p className="font-mono text-xs text-muted-foreground mt-0.5">
-          Active Font: <span className="font-medium text-foreground">{UI_FONTS.find((f) => f.id === font)?.label}</span>
-        </p>
       </Section>
 
       <Section
-        label="Font weight"
-        hint="Sets typographic weight for all fonts across UI panels, tools, inspector and dialogs."
+        label="Master Font Weight"
+        hint="Calibrates the typographic weight across all UI typography, panels, buttons, menus, and inspector fields."
       >
         <div
           className="relative grid grid-cols-5 rounded-2xl bg-well/90 p-1 ring-1 ring-border/50 shadow-inner"
           role="radiogroup"
-          aria-label="Font weight"
+          aria-label="Master Font weight"
         >
           {/* One marker that slides between stops */}
           <span
@@ -354,7 +406,7 @@ export function AppearanceSettings({
             className="pointer-events-none absolute inset-y-0 start-0 w-1/5 p-1 transition-transform duration-200 ease-smooth motion-reduce:transition-none"
             style={{ transform: `translateX(${fontWeightIndex * 100}%)` }}
           >
-            <span className="block size-full rounded-xl bg-surface shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50" />
+            <span className="block size-full rounded-xl bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50" />
           </span>
           {UI_FONT_WEIGHTS.map((option) => {
             const selected = fontWeight === option.value
@@ -390,9 +442,26 @@ export function AppearanceSettings({
             )
           })}
         </div>
-        <p className="font-mono text-xs text-muted-foreground mt-0.5">
-          Active Weight: <span className="font-medium text-foreground">{UI_FONT_WEIGHTS.find((w) => w.value === fontWeight)?.label} ({fontWeight})</span>
-        </p>
+
+        {/* Live Weight Hierarchy Strip */}
+        <div className="mt-2 grid grid-cols-4 gap-2 pt-2 border-t border-line/60">
+          <div className="flex flex-col gap-0.5 rounded-lg bg-surface-2/40 p-2 border border-line/50">
+            <span className="text-[10px] uppercase font-mono text-muted-foreground">Normal</span>
+            <span className="text-xs text-foreground font-normal truncate">Body & Labels</span>
+          </div>
+          <div className="flex flex-col gap-0.5 rounded-lg bg-surface-2/40 p-2 border border-line/50">
+            <span className="text-[10px] uppercase font-mono text-muted-foreground">Medium</span>
+            <span className="text-xs text-foreground font-medium truncate">Controls & Tabs</span>
+          </div>
+          <div className="flex flex-col gap-0.5 rounded-lg bg-surface-2/40 p-2 border border-line/50">
+            <span className="text-[10px] uppercase font-mono text-muted-foreground">SemiBold</span>
+            <span className="text-xs text-foreground font-semibold truncate">Actions & Pills</span>
+          </div>
+          <div className="flex flex-col gap-0.5 rounded-lg bg-surface-2/40 p-2 border border-line/50">
+            <span className="text-[10px] uppercase font-mono text-muted-foreground">Bold</span>
+            <span className="text-xs text-foreground font-bold truncate">Headings & Titles</span>
+          </div>
+        </div>
       </Section>
 
       {showScale ? (

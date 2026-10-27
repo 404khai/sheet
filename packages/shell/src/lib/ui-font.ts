@@ -174,25 +174,21 @@ export function applyUiFont(
   const font = UI_FONTS.find((entry) => entry.id === fontId) ?? UI_FONTS[0]
   const root = document.documentElement
 
-  if (fontId === DEFAULT_UI_FONT) {
-    root.style.removeProperty('--sheet-font-sans')
-    root.style.removeProperty('--sheet-font-mono')
-    root.style.removeProperty('--ui-font-family')
-  } else {
-    root.style.setProperty('--sheet-font-sans', font.stack)
-    if (font.monoStack) {
-      root.style.setProperty('--sheet-font-mono', font.monoStack)
-    }
-    root.style.setProperty('--ui-font-family', font.stack)
-  }
+  // Set BOTH sans and mono, plus ui-font-family, so every single element
+  // whether using font-sans, font-mono, or default inheritance, switches to this font!
+  root.style.setProperty('--sheet-font-sans', font.stack)
+  root.style.setProperty('--sheet-font-mono', font.stack)
+  root.style.setProperty('--ui-font-family', font.stack)
 
-  if (weight === DEFAULT_UI_FONT_WEIGHT) {
-    root.style.removeProperty('--ui-font-weight')
-    root.style.removeProperty('font-weight')
-  } else {
-    root.style.setProperty('--ui-font-weight', String(weight))
-    root.style.fontWeight = String(weight)
-  }
+  // Master font weight and proportional scale levels
+  const w = Number(weight) || 400
+  root.style.setProperty('--ui-font-weight', String(w))
+  root.style.setProperty('--ui-weight-light', String(Math.max(100, w - 100)))
+  root.style.setProperty('--ui-weight-normal', String(w))
+  root.style.setProperty('--ui-weight-medium', String(Math.min(900, w + 100)))
+  root.style.setProperty('--ui-weight-semibold', String(Math.min(900, w + 200)))
+  root.style.setProperty('--ui-weight-bold', String(Math.min(900, w + 300)))
+  root.style.fontWeight = String(w)
 }
 
 export function setUiFont(fontId: UiFontId) {

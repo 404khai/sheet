@@ -524,9 +524,10 @@ body {
     outline-offset: 2px;
   }
 
-  /* Form controls do not inherit the face by default. */
+  /* Form controls do not inherit the face or weight by default. */
   :where(button, input, select, textarea) {
     font-family: inherit;
+    font-weight: inherit;
   }
 
   /* Selection is the one place text inverts against a fill, and the OS default
@@ -589,12 +590,34 @@ body {
   /* App-chrome typefaces follow the Appearance pick, not the compiled theme.
      These sit in `utilities` (after Tailwind's own) so they win over the
      inlined `font-sans` / `font-mono` utilities at equal specificity. */
-  .font-sans {
-    font-family: var(--sheet-font-sans);
+  .font-sans,
+  .font-heading {
+    font-family: var(--ui-font-family, var(--sheet-font-sans)) !important;
   }
 
   .font-mono {
-    font-family: var(--sheet-font-mono);
+    font-family: var(--ui-font-family, var(--sheet-font-mono)) !important;
+  }
+
+  /* Global UI Master Weights - guarantees every element tracks the user-selected weight */
+  .font-light {
+    font-weight: var(--ui-weight-light, 300) !important;
+  }
+
+  .font-normal {
+    font-weight: var(--ui-weight-normal, 400) !important;
+  }
+
+  .font-medium {
+    font-weight: var(--ui-weight-medium, 500) !important;
+  }
+
+  .font-semibold {
+    font-weight: var(--ui-weight-semibold, 600) !important;
+  }
+
+  .font-bold {
+    font-weight: var(--ui-weight-bold, 700) !important;
   }
 
   .bg-surface-2 {

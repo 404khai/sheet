@@ -112,15 +112,19 @@
           'fira-code': "'Fira Code', monospace",
           'system': "-apple-system, BlinkMacSystemFont, sans-serif"
         }
-        if (font && fontMap[font]) {
-          document.documentElement.style.setProperty('--sheet-font-sans', fontMap[font])
-          document.documentElement.style.setProperty('--ui-font-family', fontMap[font])
-        }
-        var weight = localStorage.getItem('sheet:ui-font-weight')
-        if (weight && weight !== '400') {
-          document.documentElement.style.setProperty('--ui-font-weight', weight)
-          document.documentElement.style.fontWeight = weight
-        }
+        var activeStack = (font && fontMap[font]) ? fontMap[font] : "'Paper Mono', ui-monospace, Menlo, monospace"
+        document.documentElement.style.setProperty('--sheet-font-sans', activeStack)
+        document.documentElement.style.setProperty('--sheet-font-mono', activeStack)
+        document.documentElement.style.setProperty('--ui-font-family', activeStack)
+
+        var weight = Number(localStorage.getItem('sheet:ui-font-weight')) || 400
+        document.documentElement.style.setProperty('--ui-font-weight', weight)
+        document.documentElement.style.setProperty('--ui-weight-light', Math.max(100, weight - 100))
+        document.documentElement.style.setProperty('--ui-weight-normal', weight)
+        document.documentElement.style.setProperty('--ui-weight-medium', Math.min(900, weight + 100))
+        document.documentElement.style.setProperty('--ui-weight-semibold', Math.min(900, weight + 200))
+        document.documentElement.style.setProperty('--ui-weight-bold', Math.min(900, weight + 300))
+        document.documentElement.style.fontWeight = weight
       } catch (error) {}
     </script>
   </head>

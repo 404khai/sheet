@@ -68,6 +68,11 @@
   --sheet-font-mono: 'Paper Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --ui-font-family: var(--sheet-font-sans);
   --ui-font-weight: 400;
+  --ui-weight-light: 300;
+  --ui-weight-normal: 400;
+  --ui-weight-medium: 500;
+  --ui-weight-semibold: 600;
+  --ui-weight-bold: 700;
   --line: #e4e4e0;
   --edge: rgba(13, 13, 13, 0.08);
   --highlight: rgba(255, 255, 255, 0.9);
