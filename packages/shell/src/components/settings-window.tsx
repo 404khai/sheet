@@ -9,10 +9,11 @@ import {
 } from '@sheet/editor/lib/shortcuts'
 import { cn } from '@sheet/ui/utils'
 import { AppearanceSettings, SoundSettings } from './appearance-settings'
+import { GeneralSettings } from './general-settings'
 import { ShortcutsSettings } from './shortcuts-settings'
 import { UpdatesSettings } from './updates-settings'
 
-type SectionId = 'appearance' | 'sound' | 'shortcuts' | 'agents' | 'updates'
+type SectionId = 'general' | 'appearance' | 'agents' | 'sound' | 'shortcuts' | 'updates'
 
 /**
  * Each section's mark, drawn on a 16px grid. The one in use draws itself in, so
@@ -23,6 +24,12 @@ function Glyph({ id, active }: { id: SectionId; active: boolean }) {
   const props = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.25 } as const
   return (
     <svg viewBox="0 0 16 16" aria-hidden="true" className="size-4 shrink-0">
+      {id === 'general' ? (
+        <>
+          <rect x="2.5" y="2.5" width="11" height="11" {...props} />
+          <path className={draw} pathLength="1" d="M5 6h6M5 10h4" {...props} />
+        </>
+      ) : null}
       {id === 'appearance' ? (
         <>
           <circle cx="8" cy="8" r="5.5" {...props} />
@@ -53,10 +60,11 @@ function Glyph({ id, active }: { id: SectionId; active: boolean }) {
 }
 
 const SECTIONS: ReadonlyArray<{ id: SectionId; label: string; title: string }> = [
+  { id: 'general', label: 'General', title: 'How Sheet behaves' },
   { id: 'appearance', label: 'Appearance', title: 'How Sheet looks' },
+  { id: 'agents', label: 'Agents', title: 'Connect an agent' },
   { id: 'sound', label: 'Sound', title: 'What Sheet sounds like' },
   { id: 'shortcuts', label: 'Shortcuts', title: 'Keys, your way' },
-  { id: 'agents', label: 'Agents', title: 'Connect an agent' },
   { id: 'updates', label: 'Updates', title: 'Keep Sheet current' },
 ]
 
@@ -95,6 +103,8 @@ function ShortcutsSection() {
 
 function Body({ section }: { section: SectionId }): ReactNode {
   switch (section) {
+    case 'general':
+      return <GeneralSettings />
     case 'appearance':
       return <AppearanceSettings />
     case 'sound':
@@ -110,29 +120,33 @@ function Body({ section }: { section: SectionId }): ReactNode {
 
 /**
  * The Settings window. It is opened from the application menu (or ⌘,) and from
- * nowhere inside the interface, so it is its own screen: a title bar to drag, a
- * short list of sections on the left, one section at a time on the right.
+ * nowhere inside the interface, so it is its own screen: a short list of
+ * sections on the left, one section at a time on the right. When the window is
+ * narrow (or the interface is scaled up) the list folds to a rail of glyphs.
  */
 export function SettingsWindow() {
-  const [section, setSection] = useState<SectionId>('appearance')
-  const current = SECTIONS.find((entry) => entry.id === section) ?? SECTIONS[0]
+  const [section, setSection] = useState<SectionId>('general')
+  const index = Math.max(0, SECTIONS.findIndex((entry) => entry.id === section))
+  const current = SECTIONS[index] ?? SECTIONS[0]
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground antialiased selection:bg-cx-accent/20 selection:text-cx-accent">
-      <header
-        data-tauri-drag-region
-        className="flex h-10 shrink-0 select-none items-center justify-center border-b border-line bg-frame/90 backdrop-blur-xl"
-      >
-        <div data-tauri-drag-region className="flex items-center gap-2">
-          <span className="size-1.5 rounded-full bg-cx-accent/80 shadow-[0_0_6px_var(--cx-accent)]" />
-          <h1 data-tauri-drag-region className="font-mono text-xs font-medium tracking-tight text-foreground">
-            Settings
-          </h1>
-        </div>
-      </header>
-
+      {/* No bar of its own. macOS draws this window with an overlay title bar,
+          so each column starts with a 40px strip to drag by, in its own colour,
+          with the traffic lights sitting in the nav's. Windows and Linux keep a
+          native bar that already says "Settings", so the strips are absent. */}
       <div className="flex min-h-0 flex-1">
-        <nav aria-label="Settings sections" className="w-52 shrink-0 border-e border-line bg-frame/60 p-2.5 space-y-1">
+        <nav
+          aria-label="Settings sections"
+          className="relative flex w-15 shrink-0 flex-col gap-1 border-e border-line bg-frame px-2.5 pb-2.5 pt-2.5 sm:w-52 in-data-[os=mac]:pt-0"
+        >
+          <div data-tauri-drag-region aria-hidden="true" className="hidden h-10 shrink-0 in-data-[os=mac]:block" />
+          {/* One raised pill that glides to the section in use. Rows are 2.25rem with a 0.25rem gap. */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-2.5 top-2.5 h-9 rounded-xl bg-surface shadow-lift transition-transform duration-[280ms] ease-[cubic-bezier(0.23,1,0.32,1)] in-data-[os=mac]:top-11"
+            style={{ transform: `translateY(calc(${index} * 2.5rem))` }}
+          />
           {SECTIONS.map((entry) => {
             const active = entry.id === section
             return (
@@ -140,40 +154,40 @@ export function SettingsWindow() {
                 key={entry.id}
                 type="button"
                 aria-current={active ? 'page' : undefined}
+                title={entry.label}
                 className={cn(
-                  'flex h-9 w-full items-center gap-3 px-3 text-start text-xs outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-ring',
-                  active
-                    ? 'bg-surface text-foreground font-medium rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35),0_1px_2px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.09)] ring-1 ring-border/50 scale-[1.01]'
-                    : 'text-muted-foreground hover:bg-surface-2/70 hover:text-foreground rounded-xl active:scale-[0.98]',
+                  'group relative flex h-9 w-full items-center justify-center gap-3 rounded-xl text-start text-xs outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring sm:justify-start sm:px-3',
+                  active ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-surface/50 hover:text-foreground',
                 )}
                 onClick={() => setSection(entry.id)}
               >
-                <span className={cn('transition-all duration-150', active ? 'text-cx-accent scale-110' : 'text-muted-foreground')}>
+                <span
+                  className={cn(
+                    'transition-[color,scale] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] group-active:scale-[0.9]',
+                    active ? 'text-cx-accent' : 'text-muted-foreground group-hover:text-foreground',
+                  )}
+                >
                   <Glyph id={entry.id} active={active} />
                 </span>
-                <span className="truncate">{entry.label}</span>
+                <span className="sr-only sm:not-sr-only sm:truncate">{entry.label}</span>
               </button>
             )
           })}
         </nav>
 
-        <main className="min-w-0 flex-1 overflow-y-auto">
+        {/* A stable gutter, so a section that grows past the fold never nudges the page sideways. */}
+        <main className="min-w-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+          <div data-tauri-drag-region aria-hidden="true" className="sticky top-0 z-10 hidden h-10 bg-background in-data-[os=mac]:block" />
           {/* Re-keyed per section so each one arrives instead of swapping. */}
-          <div key={section} className="app-page-enter mx-auto w-full max-w-xl px-8 pb-16 pt-8">
-            <div className="border-b border-line/60 pb-5">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">{entryTitle(current)}</h2>
+          <div key={section} className="app-page-enter mx-auto w-full max-w-xl px-4 pb-16 pt-6 sm:px-8 sm:pt-8">
+            <div className="px-1 pb-5 sm:pb-6">
+              <h2 className="text-xl font-semibold tracking-tight text-balance text-foreground">{current.label}</h2>
               <p className="mt-1 text-xs text-muted-foreground">{current.title}</p>
             </div>
-            <div className="mt-7">
-              <Body section={section} />
-            </div>
+            <Body section={section} />
           </div>
         </main>
       </div>
     </div>
   )
-}
-
-function entryTitle(entry: { label: string; title: string }) {
-  return entry.label
 }

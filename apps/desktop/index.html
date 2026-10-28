@@ -86,10 +86,18 @@
         else if (stored === 'system') dark = matchMedia('(prefers-color-scheme: dark)').matches
       } catch (error) {}
       document.documentElement.classList.toggle('dark', dark)
+      // Which OS draws the window. macOS lays its traffic lights over the page,
+      // so chrome there leaves room for them; Windows and Linux keep a native
+      // title bar and need no gap. Read once, before paint.
+      var ua = navigator.userAgent
+      document.documentElement.setAttribute(
+        'data-os',
+        /Mac/.test(ua) ? 'mac' : /Windows/.test(ua) ? 'windows' : 'linux',
+      )
       // The accent hue, for the same reason: no flash of orange before the pick.
       try {
         var accent = localStorage.getItem('sheet:accent')
-        if (['blue', 'violet', 'green', 'pink', 'teal'].indexOf(accent) > -1) {
+        if (['blue', 'violet', 'green', 'pink', 'teal', 'mono'].indexOf(accent) > -1) {
           document.documentElement.setAttribute('data-accent', accent)
         }
       } catch (error) {}
@@ -110,7 +118,7 @@
           'outfit': "'Outfit', sans-serif",
           'jetbrains-mono': "'JetBrains Mono', monospace",
           'fira-code': "'Fira Code', monospace",
-          'system': "-apple-system, BlinkMacSystemFont, sans-serif"
+          'system': "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif"
         }
         var activeStack = (font && fontMap[font]) ? fontMap[font] : "'Paper Mono', ui-monospace, Menlo, monospace"
         document.documentElement.style.setProperty('--sheet-font-sans', activeStack)

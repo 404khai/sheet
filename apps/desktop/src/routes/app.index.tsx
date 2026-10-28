@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { DesignsDashboard } from '@sheet/shell/designs-dashboard'
+import { Home } from '@sheet/shell/home'
 
-export const Route = createFileRoute('/app/')({ component: FilesPage })
+export const Route = createFileRoute('/app/')({ component: HomePage })
 
-function FilesPage() {
-  return <DesignsDashboard />
+function HomePage() {
+  return <Home />
 }

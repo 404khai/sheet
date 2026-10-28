@@ -10,6 +10,7 @@ import {
 import { Button } from '@sheet/ui/button'
 import { Spinner } from '@sheet/ui/spinner'
 import { cn } from '@sheet/ui/utils'
+import { Mark } from './appearance-settings'
 
 /** Agents whose MCP config Sheet can write itself. "Other" is manual and lives in Settings. */
 const SUPPORTED = AGENTS.filter((agent) => agent.manual === undefined)
@@ -64,7 +65,7 @@ export function AgentSetup({ className }: { className?: string }) {
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
-      <div className="grid grid-cols-4 gap-2" role="group" aria-label="Agents">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="group" aria-label="Agents">
         {SUPPORTED.map((agent) => {
           const selected = chosen.includes(agent.key)
           const Icon = agent.icon
@@ -72,16 +73,16 @@ export function AgentSetup({ className }: { className?: string }) {
             <button
               key={agent.key}
               type="button"
-              aria-pressed={selected}
+              role="checkbox"
+              aria-checked={selected}
               disabled={installing}
               className={cn(
-                'cx-press flex min-w-0 flex-col items-center gap-2 px-1 py-3 text-xs outline-none transition-[box-shadow,color] duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60',
-                selected
-                  ? 'text-foreground shadow-lift-selected'
-                  : 'text-muted-foreground shadow-hairline hover:text-foreground hover:shadow-lift-hover',
+                'cx-tile relative flex min-w-0 flex-col items-center gap-2 rounded-xl bg-surface px-1.5 pb-2.5 pt-3.5 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60',
+                selected ? 'text-foreground' : 'text-muted-foreground',
               )}
               onClick={() => toggle(agent.key)}
             >
+              <Mark on={selected} className="absolute end-1.5 top-1.5 size-3.5" />
               <Icon className="size-5" />
               <span className="w-full truncate text-center">{agent.name}</span>
             </button>
@@ -89,22 +90,37 @@ export function AgentSetup({ className }: { className?: string }) {
         })}
       </div>
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        Adds <span className="font-mono">{MCP_URL}</span> to each agent you pick and installs the Sheet design skill.
+      <p className="text-xs leading-relaxed text-pretty text-muted-foreground">
+        Adds <span className="rounded bg-well px-1 py-px text-foreground">{MCP_URL}</span> to each agent you pick and installs the Sheet design skill.
       </p>
 
       {phase.name === 'done' ? (
-        <ul role="status" className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <ul role="status" className="app-page-enter flex flex-col gap-1.5 rounded-xl bg-well px-3 py-2.5 text-xs text-muted-foreground shadow-sunken">
           {phase.mcp.map((entry) => (
-            <li key={entry.agent}>{resultLine(entry.agent, entry.result)}</li>
+            <li key={entry.agent} className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={cn('size-1.5 shrink-0 rounded-full', entry.result.phase === 'done' ? 'bg-success' : 'bg-destructive')}
+              />
+              {resultLine(entry.agent, entry.result)}
+            </li>
           ))}
-          {skillLine(phase.skill) ? <li>{skillLine(phase.skill)}</li> : null}
+          {skillLine(phase.skill) ? (
+            <li className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={cn('size-1.5 shrink-0 rounded-full', phase.skill.phase === 'failed' ? 'bg-destructive' : 'bg-success')}
+              />
+              {skillLine(phase.skill)}
+            </li>
+          ) : null}
         </ul>
       ) : null}
 
       <Button
         type="button"
-        variant="outline"
+        size="lg"
+        variant={chosen.length > 0 && phase.name === 'choosing' ? 'default' : 'outline'}
         className="w-fit"
         disabled={installing || chosen.length === 0}
         onClick={() => void install()}

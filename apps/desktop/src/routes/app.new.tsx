@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { NewFileLauncher } from '@sheet/shell/new-file-launcher'
+import { Home } from '@sheet/shell/home'
 
-export const Route = createFileRoute('/app/new')({ component: NewFileLauncherPage })
+export const Route = createFileRoute('/app/new')({ component: NewTabPage })
 
-function NewFileLauncherPage() {
-  return <NewFileLauncher />
+/** The old New tab page: Home, with the search open to pick or start a file. */
+function NewTabPage() {
+  return <Home openSearch />
 }

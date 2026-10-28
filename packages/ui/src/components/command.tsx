@@ -43,7 +43,7 @@ export function CommandDialogBackdrop({
   return (
     <CommandDialogPrimitive.Backdrop
       className={cn(
-        "fixed inset-0 z-50 bg-black/28 transition-opacity duration-160 data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-black/24 backdrop-blur-[2px] transition-[opacity,backdrop-filter] duration-200 data-ending-style:backdrop-blur-none data-starting-style:backdrop-blur-none data-ending-style:opacity-0 data-starting-style:opacity-0",
         className,
       )}
       data-slot="command-dialog-backdrop"
@@ -82,7 +82,7 @@ export function CommandDialogPopup({
       <CommandDialogViewport>
         <CommandDialogPrimitive.Popup
           className={cn(
-            "relative row-start-2 flex max-h-96 min-h-0 w-full min-w-0 max-w-lg -translate-y-[calc(1rem*var(--nested-dialogs))] scale-[calc(1-0.08*var(--nested-dialogs))] flex-col overflow-hidden rounded-xl border-0 bg-surface-2 text-popover-foreground opacity-[calc(1-0.1*var(--nested-dialogs))] shadow-panel outline-none transition-[scale,opacity,translate] duration-160 ease-out will-change-transform data-nested:data-ending-style:translate-y-6 data-nested:data-starting-style:translate-y-6 data-nested-dialog-open:origin-top data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 **:data-[slot=scroll-area-viewport]:data-has-overflow-y:pe-1",
+            "relative row-start-2 flex max-h-96 min-h-0 w-full min-w-0 max-w-lg -translate-y-[calc(1rem*var(--nested-dialogs))] scale-[calc(1-0.08*var(--nested-dialogs))] flex-col overflow-hidden rounded-xl border-0 bg-popover text-popover-foreground opacity-[calc(1-0.1*var(--nested-dialogs))] shadow-panel-lg outline-none transition-[scale,opacity,translate] duration-160 ease-out will-change-transform data-nested:data-ending-style:translate-y-6 data-nested:data-starting-style:translate-y-6 data-nested-dialog-open:origin-top data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 **:data-[slot=scroll-area-viewport]:data-has-overflow-y:pe-1",
             className,
           )}
           data-slot="command-dialog-popup"

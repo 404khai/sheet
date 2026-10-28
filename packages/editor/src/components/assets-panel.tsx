@@ -240,7 +240,7 @@ export function AssetsPanel({
     >
       <div className="flex shrink-0 flex-col gap-2.5">
         <div className="min-w-0">
-          <h2 className="cx-label cx-bracket mb-1.5">Assets</h2>
+          <h2 className="mb-1.5 text-xs font-semibold text-foreground">Images</h2>
           <p className="text-xs text-muted-foreground">
             Click an image to place it, or drop files here.
           </p>

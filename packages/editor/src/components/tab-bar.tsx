@@ -1,32 +1,23 @@
-import { Link, useLocation } from '@tanstack/react-router'
-import { PlusIcon, XIcon } from '@sheet/ui/icons'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { File01Icon, HomeIcon, PlusIcon, XIcon } from '@sheet/ui/icons'
+import { Spinner } from '@sheet/ui/spinner'
+import { toastManager } from '@sheet/ui/toast'
 import { cn } from '@sheet/ui/utils'
+import { createDesign } from '../lib/designs'
 import { useOpenTabs } from '../lib/open-tabs'
 
-import { type ReactNode } from 'react'
-
 /**
- * A tab sits on the bar with tactile elevation and optical refinement.
- * The active tab is lifted on an elevated plate with a subtle border and glowing accent pip,
- * while inactive tabs gently lift on hover.
+ * A tab on the window bar. The open one is a raised key, the same lift every
+ * chosen thing gets; the rest sit flat and take a faint plate on hover.
  */
 const tabClassName = (active: boolean) =>
   cn(
-    'relative my-auto flex h-[26px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]',
+    'relative my-auto flex h-7 shrink-0 items-center gap-2 rounded-md px-2.5 text-xs outline-none transition-[background-color,color,scale] duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]',
     active
-      ? 'bg-surface text-foreground shadow-xs border border-edge/80 font-medium'
-      : 'text-muted-foreground hover:bg-surface/50 hover:text-foreground',
+      ? 'bg-foreground/[0.07] text-foreground'
+      : 'text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground',
   )
-
-/** The glowing accent pip beside the open tab's name. */
-function ActiveMark({ active }: { active: boolean }) {
-  return active ? (
-    <span
-      aria-hidden="true"
-      className="size-1.5 shrink-0 rounded-full bg-cx-accent shadow-[0_0_6px_var(--cx-accent)]"
-    />
-  ) : null
-}
 
 function TabLink({
   to,
@@ -34,16 +25,20 @@ function TabLink({
   className,
   children,
   'aria-label': ariaLabel,
+  'aria-current': ariaCurrent,
   title,
   hasRouter,
+  onAuxClick,
 }: {
   to: string
   params?: Record<string, string>
   className?: string
   children: ReactNode
   'aria-label'?: string
+  'aria-current'?: 'page'
   title?: string
   hasRouter: boolean
+  onAuxClick?: (event: React.MouseEvent) => void
 }) {
   if (hasRouter) {
     return (
@@ -53,7 +48,9 @@ function TabLink({
         params={params as any}
         className={className}
         aria-label={ariaLabel}
+        aria-current={ariaCurrent}
         title={title}
+        onAuxClick={onAuxClick}
       >
         {children}
       </Link>
@@ -66,12 +63,26 @@ function TabLink({
     }
   }
   return (
-    <a href={href} data-cuelume-navigate="" className={className} aria-label={ariaLabel} title={title}>
+    <a
+      href={href}
+      data-cuelume-navigate=""
+      className={className}
+      aria-label={ariaLabel}
+      aria-current={ariaCurrent}
+      title={title}
+      onAuxClick={onAuxClick}
+    >
       {children}
     </a>
   )
 }
 
+/**
+ * The window's tabs: Home, every open file, and `+` for a new one. `+` makes
+ * the file at once instead of asking where to start, so a blank canvas is one
+ * click away from anywhere. When the files outgrow the bar it scrolls sideways
+ * (wheel or trackpad) and fades at the end rather than squeezing names away.
+ */
 export function DocumentTabBar({
   activeDocument,
 }: {
@@ -86,59 +97,98 @@ export function DocumentTabBar({
     pathname = typeof window !== 'undefined' ? window.location.pathname : ''
     hasRouter = false
   }
+  let navigate: ReturnType<typeof useNavigate> | null = null
+  try {
+    navigate = useNavigate()
+  } catch {
+    navigate = null
+  }
   const { tabs, closeTab } = useOpenTabs(activeDocument)
   const activeId = activeDocument?.id ?? pathname.match(/^\/design\/([^/]+)/)?.[1]
+  const isHome = pathname.startsWith('/app')
+  const [creating, setCreating] = useState(false)
+  const stripRef = useRef<HTMLDivElement | null>(null)
 
-  const isDashboard =
-    pathname === '/app' ||
-    pathname === '/app/' ||
-    (pathname.startsWith('/app') && !pathname.startsWith('/app/new'))
-  const isLauncher = pathname.startsWith('/app/new')
+  // Keep the open file's tab in view when it changes, the way a browser does.
+  useEffect(() => {
+    const strip = stripRef.current
+    if (!strip || !activeId) return
+    strip.querySelector<HTMLElement>(`[data-tab-id="${CSS.escape(activeId)}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [activeId, tabs.length])
+
+  const newFile = async () => {
+    if (creating) return
+    setCreating(true)
+    try {
+      const created = await createDesign()
+      if (navigate) await navigate({ to: '/design/$id', params: { id: created.id } })
+      else window.location.assign(`/design/${created.id}`)
+    } catch (cause) {
+      toastManager.add({
+        type: 'error',
+        title: 'The new file was not created',
+        description: `${cause instanceof Error ? cause.message : 'The local server did not answer.'} Your open files are untouched; try again.`,
+      })
+    } finally {
+      setCreating(false)
+    }
+  }
 
   return (
-    <div data-tauri-drag-region className="flex h-full min-w-0 items-stretch gap-0.5">
+    <div data-tauri-drag-region className="flex h-full min-w-0 items-stretch gap-1">
       <TabLink
         to="/app"
         hasRouter={hasRouter}
-        className={tabClassName(isDashboard)}
-        aria-label="Back to dashboard"
+        className={cn(tabClassName(isHome), 'w-8 justify-center px-0')}
+        aria-label="Home"
+        aria-current={isHome ? 'page' : undefined}
+        title="Home"
       >
-        <ActiveMark active={isDashboard} />
-        <span>Dashboard</span>
+        <HomeIcon className="size-3.5" />
       </TabLink>
 
-      <div className="flex min-w-0 items-stretch gap-0.5">
+      <div
+        ref={stripRef}
+        data-tauri-drag-region
+        className="flex min-w-0 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden pe-3 [mask-image:linear-gradient(to_right,black_calc(100%-12px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onWheel={(event) => {
+          // A mouse wheel scrolls vertically; on this strip it means sideways.
+          if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) event.currentTarget.scrollLeft += event.deltaY
+        }}
+      >
         {tabs.map((tab) => {
           const isActive = activeId === tab.id
           return (
-            <div
-              key={tab.id}
-              className={cn(
-                'group/tab relative flex h-full min-w-0 items-center',
-                isActive && 'shrink-0',
-              )}
-            >
+            <div key={tab.id} data-tab-id={tab.id} className="group/tab relative flex h-full shrink-0 items-center">
               <TabLink
                 to="/design/$id"
                 params={{ id: tab.id }}
                 hasRouter={hasRouter}
-                className={cn(tabClassName(isActive), 'min-w-0 pe-7')}
+                aria-current={isActive ? 'page' : undefined}
+                title={tab.name}
+                className={cn(tabClassName(isActive), 'pe-8')}
+                onAuxClick={(event) => {
+                  // Middle-click closes, as in every tabbed app on every OS.
+                  if (event.button !== 1) return
+                  event.preventDefault()
+                  closeTab(tab.id)
+                }}
               >
-                <ActiveMark active={isActive} />
-                <span className="max-w-44 truncate max-md:max-w-24">{tab.name}</span>
+                <File01Icon className={cn('size-3.5 shrink-0', isActive ? 'text-cx-accent' : 'opacity-70')} />
+                <span className="max-w-40 truncate">{tab.name}</span>
               </TabLink>
               <button
                 type="button"
                 aria-label={`Close ${tab.name}`}
                 title="Close tab"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
                   closeTab(tab.id)
                 }}
                 className={cn(
-                  'cx-press absolute end-1.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground outline-none transition-[opacity,color,background-color] duration-150 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring',
-                  isActive ? 'opacity-100' : 'opacity-0 group-hover/tab:opacity-100',
+                  'absolute end-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground outline-none transition-[opacity,color,background-color] duration-150 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring',
+                  isActive ? 'opacity-100' : 'pointer-fine:opacity-0 pointer-fine:group-hover/tab:opacity-100',
                 )}
               >
                 <XIcon className="size-3" />
@@ -148,15 +198,17 @@ export function DocumentTabBar({
         })}
       </div>
 
-      <TabLink
-        to="/app/new"
-        hasRouter={hasRouter}
-        className={cn(tabClassName(isLauncher), 'px-2')}
-        aria-label="New tab"
-        title="New tab"
+      <button
+        type="button"
+        aria-label="New file"
+        title="New file"
+        disabled={creating}
+        data-cuelume-tap=""
+        onClick={() => void newFile()}
+        className={cn(tabClassName(false), 'w-7 justify-center px-0 disabled:opacity-60')}
       >
-        <PlusIcon className="size-3.5" />
-      </TabLink>
+        {creating ? <Spinner className="size-3.5" /> : <PlusIcon className="size-3.5" />}
+      </button>
     </div>
   )
 }

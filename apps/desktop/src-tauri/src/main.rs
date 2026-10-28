@@ -904,6 +904,14 @@ fn router(state: AppState) -> Router {
 }
 
 const SETTINGS_WINDOW: &str = "settings";
+
+/// Where macOS draws the window buttons. The main title bar is 44px tall and
+/// the buttons are 14px. tao sizes the title bar container to the button
+/// height plus `y` and leaves the buttons at their default offset inside it, so
+/// the buttons' centres land about 5px above `y`. Measured, not derived: 27
+/// centres them on the 44px bar. The interface leaves 88px on the left.
+#[cfg(target_os = "macos")]
+const TRAFFIC_LIGHTS: tauri::LogicalPosition<f64> = tauri::LogicalPosition { x: 18.0, y: 27.0 };
 const SETTINGS_MENU_ID: &str = "settings";
 
 /// The app's menu bar. Settings lives here and nowhere in the interface: it is
@@ -976,7 +984,8 @@ fn open_settings(app: &tauri::AppHandle) {
     #[cfg(target_os = "macos")]
     let builder = builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
-        .hidden_title(true);
+        .hidden_title(true)
+        .traffic_light_position(TRAFFIC_LIGHTS);
     if let Err(error) = builder.build() {
         eprintln!("[desktop] could not open the settings window: {error}");
     }
@@ -1054,7 +1063,8 @@ fn main() {
                 #[cfg(target_os = "macos")]
                 let window = window
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
-                    .hidden_title(true);
+                    .hidden_title(true)
+                    .traffic_light_position(TRAFFIC_LIGHTS);
                 window
                     .build()
                     .map_err(|error| format!("could not create desktop window: {error}"))?;

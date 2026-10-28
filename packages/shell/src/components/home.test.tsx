@@ -1,44 +1,20 @@
 import type { ReactNode } from 'react'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, vi, test } from 'vitest'
 import { assertWebDocument, createWebDocument, createWebElement } from '@sheet/canvas/web-model'
 
 const list = vi.fn()
-const listShared = vi.fn()
-const listArchived = vi.fn()
 const archive = vi.fn()
-const restore = vi.fn()
 const deleteDesign = vi.fn()
-const create = vi.fn()
 const createWeb = vi.fn()
-const rename = vi.fn()
-const getPreferences = vi.fn()
+const renameWeb = vi.fn()
 const getWebCanvas = vi.fn()
 
 vi.doMock('@sheet/rpc/client', () => ({
   orpc: {
-    design: {
-      list,
-      listShared,
-      listArchived,
-      archive,
-      restore,
-      delete: deleteDesign,
-    },
-    canvas: { create, rename },
-    webCanvas: { create: createWeb, get: getWebCanvas },
-    // The dashboard renders the upgrade button, which reads billing status.
-    billing: { status: vi.fn(async () => ({ required: false, plan: null })) },
-    preferences: {
-      get: getPreferences,
-      save: vi.fn(),
-    },
-  },
-}))
-vi.doMock('@sheet/auth/client', () => ({
-  authClient: {
-    useSession: () => ({ data: { user: { id: 'user-1', name: 'Lasse' } } }),
-    signOut: vi.fn(),
+    design: { list, archive, delete: deleteDesign },
+    webCanvas: { create: createWeb, get: getWebCanvas, rename: renameWeb },
+    preferences: { get: vi.fn(async () => ({ shortcuts: null })), save: vi.fn() },
   },
 }))
 
@@ -50,29 +26,27 @@ vi.doMock('@tanstack/react-router', () => ({
   Link: ({
     to,
     params,
-    search,
     children,
     ...props
   }: {
     to: string
     params?: Record<string, string>
-    search?: Record<string, unknown>
     children?: ReactNode
   }) => {
     const path = Object.entries(params ?? {}).reduce(
       (current, [key, value]) => current.replace(`$${key}`, encodeURIComponent(value)),
       to,
     )
-    const query = new URLSearchParams(search as Record<string, string>).toString()
     return (
-      <a href={query ? `${path}?${query}` : path} {...props}>
+      <a href={path} {...props}>
         {children}
       </a>
     )
   },
 }))
 
-const { DesignsDashboard } = await import('./designs-dashboard')
+const { Home } = await import('./home')
+const { CommandMenuProvider } = await import('./command-menu')
 
 const HOUR = 3_600_000
 
@@ -93,23 +67,15 @@ function openMenu(name: string) {
   })
 }
 
-import { resetDashboardSearchQuery } from '../lib/dashboard-search'
-
-describe('DesignsDashboard', () => {
+describe('Home', () => {
   beforeEach(() => {
-    resetDashboardSearchQuery()
     window.localStorage.clear()
     navigate.mockReset().mockResolvedValue(undefined)
-    getPreferences.mockReset().mockResolvedValue({ shortcuts: null })
-    create.mockReset().mockResolvedValue({ revision: 1 })
     createWeb.mockReset().mockResolvedValue({ revision: 0 })
     getWebCanvas.mockReset().mockResolvedValue({ status: 'empty' })
-    rename.mockReset()
+    renameWeb.mockReset().mockResolvedValue({ revision: 2 })
     deleteDesign.mockReset().mockResolvedValue({ deleted: true })
     archive.mockReset().mockResolvedValue({ archivedAt: Date.now() })
-    restore.mockReset().mockResolvedValue({ restored: true })
-    listArchived.mockReset().mockResolvedValue([])
-    listShared.mockReset().mockResolvedValue([])
     list.mockReset().mockResolvedValue([
       { id: 'design-old', name: 'Portfolio Design', revision: 3, updatedAt: Date.now() - 48 * HOUR },
       { id: 'design-new', name: 'Ideal pine', revision: 7, updatedAt: Date.now() - 2 * HOUR },
@@ -119,7 +85,7 @@ describe('DesignsDashboard', () => {
   afterEach(() => cleanup())
 
   test('lists files most recently edited first and links each to its canvas', async () => {
-    render(<DesignsDashboard />)
+    render(<Home />)
 
     await screen.findByText('Ideal pine')
     const links = screen.getAllByRole('link', { name: /^Open / })
@@ -131,6 +97,45 @@ describe('DesignsDashboard', () => {
     expect(screen.getByText('Edited 2 hours ago')).toBeTruthy()
   })
 
+  test('sorts by name when asked, and remembers the choice', async () => {
+    window.localStorage.setItem('sheet:files-sort', 'name')
+    render(<Home />)
+
+    await screen.findByText('Ideal pine')
+    const links = screen.getAllByRole('link', { name: /^Open / })
+    expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
+      'Open Ideal pine',
+      'Open Portfolio Design',
+    ])
+    list.mockResolvedValue([
+      { id: 'b', name: 'Beta', revision: 1, updatedAt: Date.now() },
+      { id: 'a', name: 'Alpha', revision: 1, updatedAt: Date.now() - HOUR },
+    ])
+    cleanup()
+    render(<Home />)
+    await screen.findByText('Alpha')
+    expect(screen.getAllByRole('link', { name: /^Open / })[0]?.getAttribute('aria-label')).toBe('Open Alpha')
+  })
+
+  test('shows the last three files to continue once there are more than three', async () => {
+    list.mockResolvedValue(
+      ['One', 'Two', 'Three', 'Four'].map((name, index) => ({
+        id: `d-${index}`,
+        name,
+        revision: 1,
+        updatedAt: Date.now() - index * HOUR,
+      })),
+    )
+    render(<Home />)
+
+    const continueSection = (await screen.findByRole('heading', { name: 'Continue' })).closest('section')
+    expect(continueSection).toBeTruthy()
+    if (!continueSection) return
+    expect(
+      within(continueSection).getAllByRole('link', { name: /^Open / }).map((link) => link.getAttribute('aria-label')),
+    ).toEqual(['Open One', 'Open Two', 'Open Three'])
+  })
+
   test('renders the fetched web document inside its thumbnail', async () => {
     const document = createWebDocument('Preview', 'preview')
     document.nodes.root = createWebElement('main', {
@@ -139,25 +144,33 @@ describe('DesignsDashboard', () => {
     document.roots = ['root']
     getWebCanvas.mockResolvedValue({ status: 'ready', document: assertWebDocument(document) })
     list.mockResolvedValue([{ id: 'thumbnail-fixture', name: 'Thumbnail', revision: 1, updatedAt: Date.now() }])
-    const view = render(<DesignsDashboard />)
+    const view = render(<Home />)
     await waitFor(() => expect(view.container.querySelectorAll('[data-sheet-node="root"]')).toHaveLength(1))
     expect(view.container.querySelector('[data-sheet-node="root"]')?.getAttribute('style')).toContain('background: rgb(18, 52, 86)')
   })
 
-  test('filters the list by name', async () => {
-    render(<DesignsDashboard />)
+  test('finds a file by name through the command menu', async () => {
+    render(
+      <CommandMenuProvider>
+        <Home />
+      </CommandMenuProvider>,
+    )
     await screen.findByText('Ideal pine')
 
-    fireEvent.change(screen.getByLabelText('Search files'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Search files or run a command' }))
+    fireEvent.change(await screen.findByLabelText('Search files and actions'), {
       target: { value: 'portfolio' },
     })
 
-    expect(screen.queryByText('Ideal pine')).toBeNull()
-    expect(screen.getByText('Portfolio Design')).toBeTruthy()
+    await waitFor(() => {
+      const names = screen.getAllByRole('option').map((option) => option.textContent ?? '')
+      expect(names.some((name) => name.includes('Portfolio Design'))).toBe(true)
+      expect(names.some((name) => name.includes('Ideal pine'))).toBe(false)
+    })
   })
 
   test('opens the new file on the canvas route after creating it', async () => {
-    render(<DesignsDashboard />)
+    render(<Home />)
     await screen.findByText('Ideal pine')
 
     fireEvent.click(screen.getByRole('button', { name: 'New file' }))
@@ -173,24 +186,25 @@ describe('DesignsDashboard', () => {
     )
   })
 
-  test('offers to start a file when the account has none', async () => {
+  test('offers both ways in when there are no files', async () => {
     list.mockResolvedValue([])
-    render(<DesignsDashboard />)
+    render(<Home />)
 
-    expect(await screen.findByText('No design files yet')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: 'New file' }).length).toBe(2)
+    expect(await screen.findByText('Design with your agent, or by hand')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'New file' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Connect an agent' })).toBeTruthy()
   })
 
-  test('surfaces a failed load without leaving the shimmer up', async () => {
+  test('surfaces a failed load without leaving the placeholders up', async () => {
     list.mockRejectedValue(new Error('offline'))
-    render(<DesignsDashboard />)
+    render(<Home />)
 
-    expect(await screen.findByText('offline')).toBeTruthy()
-    expect(screen.queryByText('Loading your files…')).toBeNull()
+    expect(await screen.findByText(/offline/)).toBeTruthy()
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull()
   })
 
   test('confirms deletion and moves the file to the archive', async () => {
-    render(<DesignsDashboard />)
+    render(<Home />)
     await screen.findByText('Ideal pine')
 
     openMenu('Actions for Ideal pine')
@@ -198,34 +212,49 @@ describe('DesignsDashboard', () => {
 
     expect(await screen.findByText('Delete “Ideal pine”?')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
-    await waitFor(() =>
-      expect(archive).toHaveBeenCalledWith({ id: 'design-new' }),
-    )
+    await waitFor(() => expect(archive).toHaveBeenCalledWith({ id: 'design-new' }))
     expect(deleteDesign).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.queryByText('Ideal pine')).toBeNull())
     expect(screen.getByText('Portfolio Design')).toBeTruthy()
+  })
+
+  test('renames a file in place and keeps the old name when the server refuses', async () => {
+    renameWeb.mockRejectedValue(new Error('disk full'))
+    render(<Home />)
+    await screen.findByText('Ideal pine')
+
+    openMenu('Actions for Ideal pine')
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }))
+    const field = await screen.findByLabelText('File name')
+    fireEvent.change(field, { target: { value: 'Pine v2' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+
+    await waitFor(() => expect(renameWeb).toHaveBeenCalledWith({ designId: 'design-new', name: 'Pine v2' }))
+    expect(await screen.findByText('Ideal pine')).toBeTruthy()
+    expect(screen.queryByText('Pine v2')).toBeNull()
   })
 
   test('displays scratchpad with permanent draft subtitle', async () => {
     list.mockResolvedValue([
       { id: 'design-scratch', name: 'Scratchpad', revision: 1, updatedAt: Date.now() - HOUR },
     ])
-    render(<DesignsDashboard />)
+    render(<Home />)
 
     expect(await screen.findByText('Scratchpad')).toBeTruthy()
     expect(screen.getByText('Your permanent draft')).toBeTruthy()
   })
 
-  test('toggles between grid and list views', async () => {
-    render(<DesignsDashboard />)
+  test('switches between grid and list views', async () => {
+    render(<Home />)
     await screen.findByText('Ideal pine')
 
-    const listBtn = screen.getByRole('button', { name: 'List view' })
-    fireEvent.click(listBtn)
-    expect(listBtn.getAttribute('aria-pressed')).toBe('true')
+    const listOption = screen.getByRole('radio', { name: 'List view' })
+    fireEvent.click(listOption)
+    expect(listOption.getAttribute('aria-checked')).toBe('true')
+    expect(window.localStorage.getItem('sheet:files-view')).toBe('list')
 
-    const gridBtn = screen.getByRole('button', { name: 'Grid view' })
-    fireEvent.click(gridBtn)
-    expect(gridBtn.getAttribute('aria-pressed')).toBe('true')
+    const gridOption = screen.getByRole('radio', { name: 'Grid view' })
+    fireEvent.click(gridOption)
+    expect(gridOption.getAttribute('aria-checked')).toBe('true')
   })
 })

@@ -62,14 +62,14 @@ export function FramePresetsPanel({ onPick }: { onPick: (preset: FramePreset) =>
               <ChevronDownIcon
                 className={cn('size-3 transition-transform duration-200 ease-smooth', !open && '-rotate-90')}
               />
-              <span className="cx-label cx-bracket text-inherit">{group.label}</span>
+              <span className="text-xs font-semibold text-foreground">{group.label}</span>
             </button>
             {open
               ? group.presets.map((preset) => (
                   <button
                     key={`${group.id}-${preset.name}`}
                     type="button"
-                    className="group mx-2 my-0.5 flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-xs text-foreground/85 outline-none transition-all duration-150 hover:bg-surface-2/90 hover:text-foreground hover:shadow-xs active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    className="group mx-2 my-0.5 flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-xs text-foreground/85 outline-none transition-[background-color,color,scale] duration-150 ease-smooth hover:bg-accent hover:text-foreground active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     onClick={() => onPick(preset)}
                   >
                     <span className="text-muted-foreground transition-colors group-hover:text-cx-accent">

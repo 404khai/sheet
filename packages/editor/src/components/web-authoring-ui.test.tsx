@@ -520,7 +520,8 @@ describe('authoring commits map to web transactions', () => {
     expect(applyTransaction).not.toHaveBeenCalled()
     fireEvent.click(view.container.querySelector('[data-sheet-node="card"]') as Element)
     await waitFor(() => expect(applyTransaction).toHaveBeenCalledTimes(1))
-    expect(frame.getAttribute('aria-pressed')).toBe('true')
+    // Editor returns to select tool after frame is placed
+    expect(frame.getAttribute('aria-pressed')).toBe('false')
     for (const name of ['Rectangle', 'Text', 'Image']) {
       const button = view.getByRole('button', { name })
       fireEvent.click(button)

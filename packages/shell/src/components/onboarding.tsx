@@ -53,14 +53,14 @@ const STEPS: readonly Step[] = [
     label: 'Look',
     title: 'Make it yours',
     body: 'Both apply instantly. You can change them later in Settings.',
-    content: <AppearanceSettings showScale={false} />,
+    content: <AppearanceSettings showScale={false} flat />,
   },
   {
     id: 'sound',
     label: 'Sound',
     title: 'Hear it',
     body: 'Short cues for taps, menus and finished work.',
-    content: <SoundSettings />,
+    content: <SoundSettings flat />,
   },
   {
     id: 'agents',
@@ -136,16 +136,18 @@ export function Onboarding() {
         >
           <GridPaper className="pointer-events-none absolute inset-0" />
 
-          <div className="relative flex w-full max-w-sm flex-col gap-8 bg-background p-6 shadow-lift">
+          <div className="relative flex max-h-[calc(100dvh-3rem)] w-full max-w-md flex-col gap-7 overflow-y-auto rounded-2xl bg-background p-6 shadow-panel-lg sm:p-7">
             <div className="flex items-center justify-between">
               <BrandMark />
-              <ol className="flex items-center gap-1.5" aria-label="Progress">
+              {/* The step in use is a longer pill; the ones behind it stay lit. */}
+              <ol className="flex items-center gap-1" aria-label="Progress">
                 {STEPS.map((item, position) => (
                   <li
                     key={item.id}
                     aria-current={position === index ? 'step' : undefined}
                     className={cn(
-                      'h-1 w-5 transition-colors duration-200 ease-smooth',
+                      'h-1 rounded-full transition-[width,background-color] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]',
+                      position === index ? 'w-5' : 'w-1.5',
                       position <= index ? 'bg-cx-accent' : 'bg-cx-ink/15',
                     )}
                   >
@@ -158,15 +160,15 @@ export function Onboarding() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={step.id}
-                className="flex flex-col gap-8"
+                className="flex flex-col gap-7"
                 initial={enter.initial}
                 animate={enter.animate}
                 exit={enter.exit}
                 transition={transition}
               >
                 <div className="flex flex-col gap-2">
-                  <h1 className="text-xl font-semibold tracking-tight">{step.title}</h1>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+                  <h1 className="text-2xl font-semibold tracking-tight text-balance">{step.title}</h1>
+                  <p className="text-sm leading-relaxed text-pretty text-muted-foreground">{step.body}</p>
                 </div>
                 {step.content}
               </motion.div>
@@ -176,11 +178,11 @@ export function Onboarding() {
               {index === 0 ? (
                 <span aria-hidden="true" />
               ) : (
-                <Button type="button" variant="ghost" onClick={back}>
+                <Button type="button" size="lg" variant="ghost" onClick={back}>
                   Back
                 </Button>
               )}
-              <Button type="button" onClick={next}>
+              <Button type="button" size="lg" onClick={next}>
                 {last ? 'Start designing' : 'Continue'}
               </Button>
             </div>

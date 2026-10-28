@@ -24,6 +24,20 @@ export function WindowsMark() {
   )
 }
 
+/** A penguin silhouette for Linux, in the current text colour. */
+export function LinuxMark() {
+  return (
+    <svg className="mark" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M12.5 2C9.9 2 8.6 4.1 8.6 6.6c0 1.2-.3 2.1-1 3.2-1.1 1.7-2.6 3.8-2.6 6.2 0 1 .3 1.8.8 2.3-.3.7-.9 1.2-1.8 1.5-.6.2-.5.9.1 1.1 1.1.3 2.8.4 3.9-.4.7.3 1.5.5 2.5.5 1.2 0 2.2-.3 3-.7.9.6 2.3.6 3.6.3.6-.1.9-.7.4-1.1-.9-.6-1.3-1.2-1.4-1.9.9-.8 1.4-2 1.4-3.5 0-2.1-1.1-3.7-2.1-5.1-.8-1.1-1.3-2.1-1.3-3.4C15.9 4 14.9 2 12.5 2Zm-1.2 3.3c.5 0 .8.5.8 1.1s-.3 1.1-.8 1.1-.8-.5-.8-1.1.3-1.1.8-1.1Zm2.6 0c.5 0 .8.5.8 1.1s-.3 1.1-.8 1.1-.8-.5-.8-1.1.3-1.1.8-1.1ZM12.6 8c.8 0 1.5.5 1.5.9s-.9.9-1.5.9-1.5-.4-1.5-.9S11.8 8 12.6 8Z"
+      />
+    </svg>
+  )
+}
+
 export function PlatformMark({ target }: { target: DownloadTarget }) {
-  return target === 'windows' ? <WindowsMark /> : <AppleMark />
+  if (target === 'windows') return <WindowsMark />
+  if (target === 'linux') return <LinuxMark />
+  return <AppleMark />
 }

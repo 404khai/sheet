@@ -106,6 +106,12 @@ export function DownloadDialog({
               </button>
             </div>
           </>
+        ) : target === 'linux' ? (
+          <p className="muted">
+            Make the AppImage executable, then run it:{' '}
+            <code>chmod +x Sheet-linux-x64.AppImage &amp;&amp; ./Sheet-linux-x64.AppImage</code>. If it
+            will not start, your system may need <strong>libfuse2</strong>.
+          </p>
         ) : (
           <p className="muted">
             Sheet is not code-signed yet, so Windows SmartScreen will warn about an unrecognised app
@@ -117,7 +123,11 @@ export function DownloadDialog({
         <p className="muted dialog-note">
           Only the first {target === 'macos' ? 'install' : 'launch'} needs it. After that, Sheet
           updates itself.{' '}
-          {target === 'macos' ? 'Apple Silicon Macs only.' : 'Windows 10 or 11, 64-bit.'}
+          {target === 'macos'
+            ? 'Apple Silicon Macs only.'
+            : target === 'linux'
+              ? 'Linux x86_64 (AppImage).'
+              : 'Windows 10 or 11, 64-bit.'}
         </p>
 
         <div className="dialog-foot">

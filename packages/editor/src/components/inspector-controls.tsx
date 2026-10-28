@@ -16,20 +16,23 @@ export function InspectorSection({
 }) {
   const [open, setOpen] = useState(true)
   return (
-    <section className="space-y-3 border-b border-line/60 px-4 py-3.5">
-      <div className="flex h-5 items-center justify-between gap-2 text-2xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+    // One block per concern, divided by a hairline. The title is sentence case
+    // at full ink, so the panel reads as headings and values, not as labels
+    // shouting over the numbers.
+    <section className="space-y-2.5 border-b border-line px-3 pb-3.5 pt-3">
+      <div className="flex h-6 items-center justify-between gap-2 px-1">
         {collapsible ? (
           <button
             type="button"
             aria-expanded={open}
-            className="flex items-center gap-1 hover:text-foreground"
+            className="-ms-1 flex items-center gap-1 rounded-md px-1 text-xs font-semibold text-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => setOpen((value) => !value)}
           >
+            <ChevronDownIcon className={cn('size-3 text-muted-foreground transition-transform duration-200 ease-smooth', !open && '-rotate-90')} />
             <span>{title}</span>
-            <ChevronDownIcon className={cn('size-3.5 text-muted-foreground transition-transform', !open && '-rotate-90')} />
           </button>
         ) : (
-          <span>{title}</span>
+          <span className="text-xs font-semibold text-foreground">{title}</span>
         )}
         {action ? <div className="flex items-center gap-1 text-muted-foreground">{action}</div> : null}
       </div>
@@ -95,7 +98,7 @@ export function AlignmentGrid({
   const activeRow = AXIS.indexOf((column ? justify : align) as (typeof AXIS)[number])
   const activeColumn = AXIS.indexOf((column ? align : justify) as (typeof AXIS)[number])
   return (
-    <div role="group" aria-label="Alignment" className="grid aspect-square w-full grid-cols-3 grid-rows-3 rounded-xl bg-well/90 p-1 ring-1 ring-border/40 shadow-inner">
+    <div role="group" aria-label="Alignment" className="grid aspect-square w-full grid-cols-3 grid-rows-3 rounded-xl bg-well p-1 shadow-sunken">
       {AXIS.flatMap((_, row) =>
         AXIS.map((__, col) => {
           const active = row === activeRow && col === activeColumn
@@ -108,14 +111,14 @@ export function AlignmentGrid({
               aria-label={`Align ${['top', 'middle', 'bottom'][row]} ${['left', 'center', 'right'][col]}`}
               aria-pressed={active}
               className={cn(
-                'group grid place-items-center rounded-lg transition-all duration-150 active:scale-90',
-                active ? 'bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50' : 'hover:bg-surface/50',
+                'group grid place-items-center rounded-lg transition-[background-color,box-shadow,scale] duration-150 ease-smooth active:scale-90',
+                active ? 'bg-surface shadow-raised' : 'hover:bg-surface/50',
               )}
               onClick={() => onChange({ justify: main, align: cross })}
             >
               <span
                 className={cn(
-                  'rounded-full transition-all duration-150',
+                  'rounded-full transition-[width,height,background-color] duration-200 ease-smooth',
                   active ? 'size-2.5 bg-cx-accent shadow-xs' : 'size-1 bg-muted-foreground/60 group-hover:bg-foreground',
                 )}
               />
@@ -139,8 +142,22 @@ export function IconToggle<T extends string>({
   options: readonly { value: T; label: string; icon: ReactNode }[]
   onChange: (value: T) => void
 }) {
+  // One raised thumb glides to the pick. A mixed selection (`null`) has no pick,
+  // so the thumb fades out where it was rather than claiming a stop.
+  const index = options.findIndex((option) => option.value === value)
   return (
-    <div role="group" aria-label={label} className="grid h-8 grid-flow-col auto-cols-fr rounded-xl bg-well/90 p-0.5 ring-1 ring-border/40 shadow-inner">
+    <div role="group" aria-label={label} className="relative grid h-8 grid-flow-col auto-cols-fr rounded-lg bg-well p-0.5 shadow-sunken">
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-y-0.5 start-0.5 rounded-md bg-surface shadow-raised transition-[translate,opacity] duration-[260ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+          index === -1 && 'opacity-0',
+        )}
+        style={{
+          width: `calc((100% - 0.25rem) / ${options.length})`,
+          translate: `${Math.max(0, index) * 100}% 0`,
+        }}
+      />
       {options.map((option) => (
         <button
           key={option.value}
@@ -149,10 +166,8 @@ export function IconToggle<T extends string>({
           title={option.label}
           aria-pressed={value === option.value}
           className={cn(
-            'grid place-items-center rounded-lg text-muted-foreground transition-all duration-150 active:scale-95',
-            value === option.value
-              ? 'bg-surface text-foreground font-medium shadow-[0_1px_3px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50 scale-[1.01]'
-              : 'hover:text-foreground hover:bg-surface/40',
+            'relative z-10 grid place-items-center rounded-md outline-none transition-[color,scale] duration-150 ease-smooth active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-ring',
+            value === option.value ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
           )}
           onClick={() => onChange(option.value)}
         >

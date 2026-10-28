@@ -14,6 +14,10 @@ import {
 } from '@sheet/editor/lib/shortcuts'
 import { cn } from '@sheet/ui/utils'
 
+/** Per-row actions wait for the row's hover with a mouse; touch and keyboard always see them. */
+const ROW_ACTION =
+  'text-muted-foreground transition-[opacity,background-color,color] pointer-fine:opacity-0 pointer-fine:group-hover/row:opacity-100 focus-visible:opacity-100'
+
 export function ShortcutsSettings({
   config,
   onChange,
@@ -99,23 +103,20 @@ export function ShortcutsSettings({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Keyboard shortcuts</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Remap editor actions. Space-hold hand tool stays fixed.
-          </p>
-        </div>
-        <Button type="button" size="sm" variant="outline" onClick={resetAll}>
-          Reset built-ins
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <p className="text-xs text-pretty text-muted-foreground">
+          Click a key to record a new one. Esc cancels. Holding Space for the hand tool stays fixed.
+        </p>
+        <Button type="button" variant="outline" onClick={resetAll} className="shrink-0">
+          Reset all
         </Button>
       </div>
 
       {conflicts.length > 0 && (
         <div
           role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive-foreground shadow-xs"
+          className="app-page-enter rounded-xl bg-destructive/8 px-3.5 py-2.5 text-xs text-destructive-foreground shadow-hairline"
         >
           {conflicts.map((conflict) => (
             <p key={conflict.serialized}>
@@ -132,12 +133,12 @@ export function ShortcutsSettings({
         return (
           <section
             key={group.id}
-            className="flex flex-col gap-2.5 rounded-2xl border border-line/70 bg-surface/80 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-sm"
+            className="flex flex-col gap-2 rounded-2xl bg-surface p-2 shadow-lift"
           >
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+            <h3 className="px-2.5 pb-0.5 pt-2 text-[13px] font-semibold tracking-tight text-foreground">
               {group.label}
             </h3>
-            <ul className="divide-y divide-line/60 rounded-xl border border-line/70 bg-surface-2/30">
+            <ul className="flex flex-col">
               {ids.map((id) => {
                 const chords = resolveBuiltIn(id, draft)
                 const isDefault =
@@ -147,18 +148,22 @@ export function ShortcutsSettings({
                 return (
                   <li
                     key={id}
-                    className="flex items-center gap-2 px-3 py-2 text-xs"
+                    className="group/row flex min-h-10 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-colors duration-150 hover:bg-accent/50"
                   >
-                    <span className="min-w-0 flex-1 truncate text-foreground font-medium">
+                    <span className="min-w-0 flex-1 truncate text-foreground">
                       {BUILTIN_META[id].label}
                     </span>
+                    {!isDefault && !isRecording ? (
+                      <span className="me-1 size-1.5 shrink-0 rounded-full bg-cx-accent" title="Changed from the default" />
+                    ) : null}
                     <button
                       type="button"
+                      aria-label={`${BUILTIN_META[id].label}: ${isRecording ? 'recording, press keys' : formatChord(chords)}`}
                       className={cn(
-                        'rounded-lg border px-2.5 py-1 font-mono text-xs tabular-nums transition-all duration-150 active:scale-95',
+                        'min-w-12 rounded-md px-2 py-1 text-[11px] tabular-nums outline-none transition-[background-color,box-shadow,color,scale] duration-150 ease-smooth active:scale-[0.95] focus-visible:ring-2 focus-visible:ring-ring',
                         isRecording
-                          ? 'border-cx-accent bg-cx-accent/15 text-cx-accent shadow-[0_0_8px_var(--cx-accent)]'
-                          : 'border-border/80 bg-surface text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-surface-2',
+                          ? 'animate-pulse bg-cx-accent/10 text-cx-accent shadow-[0_0_0_1.5px_var(--cx-accent)]'
+                          : 'bg-surface text-foreground shadow-raised hover:shadow-raised-hover',
                       )}
                       onClick={() => setRecording({ kind: 'builtIn', id })}
                     >
@@ -169,6 +174,7 @@ export function ShortcutsSettings({
                         type="button"
                         size="xs"
                         variant="ghost"
+                        className={ROW_ACTION}
                         onClick={() => resetBuiltIn(id)}
                       >
                         Default
@@ -179,6 +185,7 @@ export function ShortcutsSettings({
                         type="button"
                         size="xs"
                         variant="ghost"
+                        className={ROW_ACTION}
                         onClick={() => unbindBuiltIn(id)}
                       >
                         Clear
@@ -192,7 +199,7 @@ export function ShortcutsSettings({
         )
       })}
 
-      <p className="text-xs text-muted-foreground">
+      <p className="px-1 text-xs text-muted-foreground">
         Defaults include {Object.keys(DEFAULT_SHORTCUTS).length} actions
         {chordsOf(DEFAULT_SHORTCUTS['tool.select']).length
           ? ` (e.g. Select is ${formatChord(DEFAULT_SHORTCUTS['tool.select'])})`

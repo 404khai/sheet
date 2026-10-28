@@ -33,7 +33,7 @@ export function CopyImageButton({
       title={enabled ? 'Copy selection as image' : 'Select something on the canvas to copy it as an image'}
       disabled={!enabled || state === 'working'}
       className={cn(
-        'flex h-[24px] shrink-0 items-center gap-1.5 rounded-md bg-surface px-2 text-xs text-foreground shadow-lift outline-none transition-[box-shadow,transform,opacity] duration-150 ease-smooth hover:shadow-lift-hover focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:opacity-50',
+        'grid size-7 shrink-0 place-items-center rounded-md bg-surface text-foreground shadow-raised outline-none transition-[background-color,color,box-shadow,scale] duration-150 ease-smooth hover:bg-surface/80 hover:shadow-raised-hover focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.92] disabled:opacity-40 disabled:shadow-none',
       )}
       onClick={() => {
         setState('working')
@@ -64,7 +64,7 @@ export function CopyImageButton({
       ) : (
         <CopyIcon className="size-3.5 text-muted-foreground" />
       )}
-      <span className="max-md:sr-only">{state === 'done' ? 'Copied' : state === 'working' ? 'Copying…' : 'Copy'}</span>
+      <span className="sr-only">{state === 'done' ? 'Copied' : state === 'working' ? 'Copying…' : 'Copy'}</span>
     </button>
   )
 }

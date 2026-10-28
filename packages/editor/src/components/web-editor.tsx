@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  BotIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   CodeXmlIcon,
@@ -22,12 +23,9 @@ import {
   HandIcon,
   LayoutGridIcon,
   ImageIcon,
-  LayersIcon,
   MaximizeIcon,
   MessageSquareIcon,
   MinusIcon,
-  ShapesIcon,
-  SlidersHorizontalIcon,
   MousePointer2Icon,
   PanelLeftIcon,
   PanelRightIcon,
@@ -104,8 +102,11 @@ import { WebDocumentView } from '@sheet/canvas/web-react'
 import { AssetsPanel, assetSrc } from './assets-panel'
 import { useRegisterOpenTab } from '../lib/open-tabs'
 import { useChromeSlots } from './chrome-slots'
-import { Sound } from '@sheet/ui/sound'
 import { createPortal } from 'react-dom'
+import { PanelResizer, usePanelWidth } from './panel-resize'
+import { PanelSegment, PanelTabs } from './panel-tabs'
+import { useRegisterCommands, type AppCommand } from '../lib/command-registry'
+import { Sound } from '@sheet/ui/sound'
 import { useDesignComments } from '../lib/use-comments'
 import { CommentPin, CommentThread, CommentsList } from './comments'
 import { ExportMenu } from './export-menu'
@@ -650,9 +651,9 @@ function PageRow({
   return (
     <div
       className={cn(
-        'group mx-2 my-0.5 flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-xs transition-all duration-150',
+        'group mx-2 my-0.5 flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-xs transition-[background-color,color,box-shadow] duration-150 ease-smooth',
         active
-          ? 'bg-cx-accent/10 text-foreground font-medium ring-1 ring-cx-accent/25 shadow-xs'
+          ? 'bg-cx-accent/10 font-medium text-foreground ring-1 ring-inset ring-cx-accent/25'
           : 'text-foreground/80 hover:bg-accent/60 hover:text-foreground',
         current && 'font-semibold',
       )}
@@ -771,9 +772,9 @@ function WebTreeNode({
     <div>
       <div
         className={cn(
-          'group relative mx-1.5 my-0.5 flex h-7.5 cursor-pointer select-none items-center rounded-lg pe-2.5 text-xs transition-all duration-150',
+          'group relative mx-1.5 my-0.5 flex h-7.5 cursor-pointer select-none items-center rounded-lg pe-2.5 text-xs transition-[background-color,color,box-shadow,opacity] duration-150 ease-smooth',
           isSelected
-            ? 'bg-cx-accent/10 text-foreground font-medium ring-1 ring-cx-accent/25 shadow-xs'
+            ? 'bg-cx-accent/10 font-medium text-foreground ring-1 ring-inset ring-cx-accent/25'
             : 'text-foreground/80 hover:bg-accent/50 hover:text-foreground',
           hidden && 'opacity-50',
           dropZone === 'inside' && 'bg-accent ring-1 ring-cx-accent',
@@ -941,7 +942,7 @@ function InspectorInput({
           defaultValue={value}
           placeholder={placeholder}
           className={cn(
-            'h-8 w-full min-w-0 rounded-lg border border-line/70 bg-surface-2/60 px-2.5 text-[12px] font-mono text-foreground outline-none shadow-[inset_0_1px_1.5px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35),0_1px_0_rgba(255,255,255,0.06)] transition-all placeholder:text-muted-foreground/60 hover:border-line focus:border-cx-accent/60 focus:ring-1 focus:ring-cx-accent/40',
+            'h-8 w-full min-w-0 rounded-lg border border-transparent bg-well/60 px-2.5 text-[12px] font-mono tabular-nums text-foreground shadow-sunken outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-smooth placeholder:text-muted-foreground/60 hover:bg-well focus:border-cx-accent focus:bg-surface focus:ring-3 focus:ring-cx-accent/20',
             prefix ? 'ps-7' : null,
             suffix ? 'pe-7' : null,
           )}
@@ -991,7 +992,7 @@ function InspectorSelect({
       <select
         aria-label={label}
         value={value}
-        className="h-8 w-full min-w-0 rounded-lg border border-line/70 bg-surface-2/60 px-2 text-[12px] font-mono text-foreground outline-none shadow-[inset_0_1px_1.5px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35),0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-line focus:border-cx-accent/60 focus:ring-1 focus:ring-cx-accent/40"
+        className="h-8 w-full min-w-0 rounded-lg border border-transparent bg-surface px-2 text-[12px] font-mono text-foreground shadow-raised outline-none transition-[border-color,box-shadow] duration-150 ease-smooth hover:shadow-raised-hover focus:border-cx-accent focus:ring-3 focus:ring-cx-accent/20"
         onChange={(event) => onCommit(event.currentTarget.value)}
       >
         <option value="">{placeholder}</option>
@@ -1023,6 +1024,10 @@ const FONT_WEIGHT_OPTIONS = [
 const TEXT_ALIGN_OPTIONS = ['left', 'center', 'right', 'justify'] as const
 const FONT_STYLE_OPTIONS = ['normal', 'italic'] as const
 
+/** A key on the zoom bar: 8px round inside the bar's 12px with 4px padding. */
+const ZOOM_KEY =
+  'flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none transition-[background-color,color,scale] duration-150 ease-smooth hover:bg-accent hover:text-foreground active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-ring'
+
 function WebToolButton({
   label,
   active = false,
@@ -1047,11 +1052,11 @@ function WebToolButton({
       disabled={disabled}
       data-cuelume-select=""
       className={cn(
-        'relative size-8.5 grid place-items-center rounded-xl outline-none transition-all duration-150 ease-smooth active:scale-90 focus-visible:ring-2 focus-visible:ring-ring',
+        'relative grid size-8 place-items-center rounded-md outline-none transition-[background-color,color,box-shadow,scale] duration-150 ease-smooth active:scale-[0.92] active:duration-75 focus-visible:ring-2 focus-visible:ring-ring',
         active
-          ? 'bg-cx-accent text-white shadow-sm ring-1 ring-white/25'
-          : 'text-muted-foreground hover:bg-accent/75 hover:text-foreground hover:scale-105',
-        disabled && 'opacity-40 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground hover:scale-100',
+          ? 'bg-cx-accent text-cx-accent-foreground shadow-[0_1px_2px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.22)]'
+          : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+        disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground',
       )}
       onClick={(event) => {
         event.stopPropagation()
@@ -1175,8 +1180,8 @@ function WebInspector({
     return (
       <div>
         {/* Page Section */}
-        <section className="space-y-3 border-b border-line px-4 py-3.5">
-          <div className="cx-label cx-bracket">
+        <section className="space-y-2.5 border-b border-line px-4 pb-3.5 pt-3">
+          <div className="flex h-6 items-center text-xs font-semibold text-foreground">
             Page
           </div>
           {boundedPage ? (
@@ -2005,6 +2010,7 @@ export function WebCanvasEditor({
   name: string
 }) {
   // Opening a file puts it in the sidebar's open list; the name stays live.
+  const slots = useChromeSlots()
   const [document, setDocument] = useState(initialDocument)
   const [activePageId, setActivePageId] = useState<string | null>(() => openingPageId(initialDocument))
   const pageId = resolvePageId(document, activePageId)
@@ -2051,9 +2057,10 @@ export function WebCanvasEditor({
   const isCompact = windowWidth < 1024
 
   const [leftPanelOpen, setLeftPanelOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 1024)
-  const [rightPanelOpen, setRightPanelOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 1024)
+  // Closed until something on the canvas is chosen; `select` opens it.
+  const [rightPanelOpen, setRightPanelOpen] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
-  const preFocusRef = useRef({ left: true, right: true })
+  const preFocusRef = useRef({ left: true, right: false })
   const toggleFocusMode = useCallback(() => {
     setFocusMode((curr) => {
       if (!curr) {
@@ -2070,7 +2077,13 @@ export function WebCanvasEditor({
   }, [leftPanelOpen, rightPanelOpen])
 
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false)
-  const [leftTab, setLeftTab] = useState<'design' | 'theme' | 'assets' | 'icons' | 'comments'>('design')
+  // Left: the file's structure, what can be placed, its tokens. Right: the
+  // selection, and the conversation about it.
+  const [leftTab, setLeftTab] = useState<'design' | 'assets' | 'theme'>('design')
+  const [assetsKind, setAssetsKind] = useState<'images' | 'icons'>('images')
+  const [rightTab, setRightTab] = useState<'design' | 'comments'>('design')
+  const [leftWidth, setLeftWidth] = usePanelWidth('sheet:panel-left', 256)
+  const [rightWidth, setRightWidth] = usePanelWidth('sheet:panel-right', 288)
   const { comments, create: createComment, resolve: resolveComment, remove: removeComment } = useDesignComments(designId)
   const [threadNodeId, setThreadNodeId] = useState<string | null>(null)
   const [pinRects, setPinRects] = useState<Record<string, OverlayRect>>({})
@@ -2253,6 +2266,9 @@ export function WebCanvasEditor({
     selectedRef.current = id
     setSelectedId(id)
     setPageSelected(false)
+    if (id) {
+      setRightPanelOpen(true)
+    }
     scheduleMeasure()
   }, [scheduleMeasure])
 
@@ -3578,21 +3594,167 @@ export function WebCanvasEditor({
     await copyImage(captureImage({ html, rootId: id }))
   }, [])
 
-  const slots = useChromeSlots()
+  // What the palette (⌘K / Ctrl+K) can do while this file is open.
+  const paletteCommands = useMemo<AppCommand[]>(() => [
+    { id: 'fit', label: 'Zoom to fit', keywords: 'fit view canvas', shortcut: formatBuiltInChord('zoomToFit', shortcutConfig), icon: <CropIcon />, run: fitToView },
+    { id: 'layers', label: leftPanelOpen ? 'Hide layers panel' : 'Show layers panel', keywords: 'sidebar left pages', icon: <PanelLeftIcon />, run: () => setLeftPanelOpen((open) => !open) },
+    { id: 'design', label: rightPanelOpen ? 'Hide design panel' : 'Show design panel', keywords: 'inspector right properties', icon: <PanelRightIcon />, run: () => setRightPanelOpen((open) => !open) },
+    { id: 'focus', label: focusMode ? 'Leave focus mode' : 'Focus mode', keywords: 'zen hide panels', shortcut: '\\', icon: <MaximizeIcon />, run: toggleFocusMode },
+    { id: 'frame', label: 'Frame tool', keywords: 'artboard size', shortcut: formatBuiltInChord('tool.frame', shortcutConfig), icon: <FrameIcon />, run: () => { setTool('frame'); setRightPanelOpen(true); setRightTab('design') } },
+    { id: 'comments', label: 'Show comments', keywords: 'feedback threads', icon: <MessageSquareIcon />, run: () => { setRightPanelOpen(true); setRightTab('comments') } },
+    { id: 'icons', label: 'Browse icons', keywords: 'insert library', icon: <ComponentIcon />, run: () => { setLeftPanelOpen(true); setLeftTab('assets'); setAssetsKind('icons') } },
+    { id: 'shaders', label: 'Browse shaders', keywords: 'gradient background', icon: <ColorsIcon />, run: () => setShadersOpen(true) },
+    { id: 'agent', label: 'Connect an agent', keywords: 'mcp claude cursor', icon: <BotIcon />, run: () => setConnectAgentOpen(true) },
+    // Every dependency is stable between renders that change nothing here, so
+    // the palette re-registers only when a label or an action really changes.
+  ], [fitToView, focusMode, leftPanelOpen, rightPanelOpen, setTool, shortcutConfig, toggleFocusMode])
+  useRegisterCommands('editor', paletteCommands)
+
   const barButtonClassName =
-    'flex size-[24px] shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-[background-color,color,transform] duration-150 ease-smooth hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-90 aria-pressed:text-foreground'
-  const panelToggle = (
-    <button
-      type="button"
-      aria-label={leftPanelOpen ? 'Hide layers panel' : 'Open layers panel'}
-      aria-pressed={leftPanelOpen}
-      title={leftPanelOpen ? 'Hide layers panel' : 'Open layers panel'}
-      data-cuelume-select=""
-      className={barButtonClassName}
-      onClick={() => setLeftPanelOpen((open) => !open)}
-    >
-      <PanelLeftIcon className="size-4" />
-    </button>
+    'flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-[background-color,color,scale] duration-150 ease-smooth hover:bg-surface/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.92] aria-pressed:text-foreground'
+
+  // The tools, in the order a design is made: move around, block it out, fill
+  // it in, then talk about it. Groups are split by hairlines.
+  const toolButtons = (
+    <>
+      <WebToolButton
+        label={`Select (${shortcutLabel('tool.select')})`}
+        aria-label="Select"
+        active={tool === 'select' && !isSpacePanning}
+        onClick={() => setTool('select')}
+      >
+        <MousePointer2Icon className="size-4" />
+      </WebToolButton>
+      <WebToolButton
+        label={`Hand (${shortcutLabel('tool.hand')})`}
+        aria-label="Hand"
+        active={tool === 'pan' || isSpacePanning}
+        onClick={() => setTool('pan')}
+      >
+        <HandIcon className="size-4" />
+      </WebToolButton>
+
+      <div className="my-1 h-px w-5 shrink-0 bg-line/80" />
+
+      <WebToolButton
+        label={`Frame (${shortcutLabel('tool.frame')})`}
+        aria-label="Frame"
+        active={tool === 'frame'}
+        onClick={() => {
+          setTool('frame')
+          // The size list lives in the right panel; make sure it is there to see.
+          setRightPanelOpen(true)
+          setRightTab('design')
+        }}
+      >
+        <FrameIcon className="size-4" />
+      </WebToolButton>
+      <WebToolButton
+        label={`Rectangle (${shortcutLabel('tool.box')})`}
+        aria-label="Rectangle"
+        active={tool === 'box'}
+        onClick={() => setTool('box')}
+      >
+        <SquareIcon className="size-4" />
+      </WebToolButton>
+      <WebToolButton
+        label={`Pen (${shortcutLabel('tool.pen')})`}
+        aria-label="Pen"
+        active={tool === 'pen'}
+        onClick={() => setTool('pen')}
+      >
+        <PenTool01Icon className="size-4" />
+      </WebToolButton>
+      <WebToolButton
+        label={`Text (${shortcutLabel('tool.text')})`}
+        aria-label="Text"
+        active={tool === 'text'}
+        onClick={() => setTool('text')}
+      >
+        <TypeIcon className="size-4" />
+      </WebToolButton>
+
+      <div className="my-1 h-px w-5 shrink-0 bg-line/80" />
+
+      <div className="relative">
+        <WebToolButton
+          label="Insert element"
+          aria-label="Insert element"
+          active={quickInsertOpen}
+          onClick={() => setQuickInsertOpen((open) => !open)}
+        >
+          <PlusCircleIcon className="size-4" />
+        </WebToolButton>
+        {quickInsertOpen ? (
+          <div className="app-page-enter absolute left-full top-0 z-40 ms-2 w-40 origin-top-left rounded-xl bg-popover p-1 text-foreground shadow-panel-lg">
+            <div className="px-2 pb-1 pt-1.5 text-[11px] text-muted-foreground">Insert element</div>
+            <div className="max-h-[min(14rem,50vh)] space-y-0.5 overflow-y-auto">
+              {ELEMENT_TAGS.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className="flex h-7 w-full items-center rounded-lg px-2 text-left font-mono text-xs text-foreground outline-none transition-colors duration-100 hover:bg-accent focus-visible:bg-accent"
+                  onClick={() => {
+                    insertElement(tag)
+                    setQuickInsertOpen(false)
+                  }}
+                >
+                  &lt;{tag}&gt;
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <WebToolButton
+        label={`Image (${shortcutLabel('tool.image')})`}
+        aria-label="Image"
+        active={tool === 'image'}
+        onClick={() => {
+          setTool('image')
+          setLeftPanelOpen(true)
+          setLeftTab('assets')
+          setAssetsKind('images')
+        }}
+      >
+        <ImageIcon className="size-4" />
+      </WebToolButton>
+      <WebToolButton
+        label="Icon library"
+        aria-label="Icon library"
+        active={leftPanelOpen && leftTab === 'assets' && assetsKind === 'icons'}
+        onClick={() => {
+          setLeftPanelOpen(true)
+          setLeftTab('assets')
+          setAssetsKind('icons')
+        }}
+      >
+        <ComponentIcon className="size-4" />
+      </WebToolButton>
+      <WebToolButton
+        label="Shaders"
+        aria-label="Shaders"
+        active={shadersOpen}
+        onClick={() => setShadersOpen(true)}
+      >
+        <ColorsIcon className="size-4" />
+      </WebToolButton>
+
+      <div className="my-1 h-px w-5 shrink-0 bg-line/80" />
+
+      <WebToolButton
+        label="Comment (C)"
+        aria-label="Comment"
+        active={tool === 'comment'}
+        onClick={() => {
+          setTool('comment')
+          setRightPanelOpen(true)
+          setRightTab('comments')
+        }}
+      >
+        <MessageSquareIcon className="size-4" />
+      </WebToolButton>
+    </>
   )
   const trailingControls = (
     <>
@@ -3601,7 +3763,7 @@ export function WebCanvasEditor({
           role="status"
           aria-live="polite"
           className={cn(
-            'flex h-[24px] min-w-0 items-center gap-1.5 truncate rounded-md px-2 text-xs transition-opacity duration-300',
+            'flex h-7 min-w-0 items-center gap-1.5 truncate rounded-md px-2 text-xs transition-opacity duration-300',
             agentActivity.phase === 'working' ? 'text-foreground' : 'text-muted-foreground',
           )}
         >
@@ -3637,109 +3799,73 @@ export function WebCanvasEditor({
         onError={setNotice}
       />
       <ExportMenu designId={designId} draftId={draftId} onError={setNotice} />
-      <button
-        type="button"
-        aria-label={rightPanelOpen ? 'Collapse design panel' : 'Open design panel'}
-        aria-pressed={rightPanelOpen}
-        title={rightPanelOpen ? 'Collapse design panel' : 'Open design panel'}
-        data-cuelume-select=""
-        className={barButtonClassName}
-        onClick={() => setRightPanelOpen((open) => !open)}
-      >
-        <PanelRightIcon className="size-4" />
-      </button>
     </>
+  )
+
+  const leadingControls = (
+    <button
+      type="button"
+      aria-label={leftPanelOpen ? 'Collapse layers panel' : 'Open layers panel'}
+      aria-pressed={leftPanelOpen}
+      title={leftPanelOpen ? 'Collapse layers panel' : 'Open layers panel'}
+      data-cuelume-select=""
+      className={cn(barButtonClassName, leftPanelOpen && 'bg-foreground/[0.07] text-foreground')}
+      onClick={() => setLeftPanelOpen((open) => !open)}
+    >
+      <PanelLeftIcon className="size-3.5" />
+    </button>
   )
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background text-foreground font-sans antialiased">
-      {/* Tab bar controls: portaled into the shell's bar, or drawn here when there is none. */}
-      {slots.leading ? createPortal(panelToggle, slots.leading) : null}
+      {/* Portalled Title Bar Controls */}
+      {slots.leading ? createPortal(leadingControls, slots.leading) : null}
       {slots.trailing ? createPortal(trailingControls, slots.trailing) : null}
-      {slots.leading && slots.trailing ? null : (
+      {!slots.trailing && (
         <header
           data-tauri-drag-region
-          className="z-30 flex h-12 w-full min-w-0 shrink-0 select-none items-center gap-2 overflow-hidden px-4"
+          className="z-30 flex h-9 w-full min-w-0 shrink-0 select-none items-center gap-2 border-b border-line bg-surface px-3"
         >
-          {panelToggle}
-          <span className="min-w-0 truncate ps-1 text-sm text-foreground">
-            {document.name || name || 'Untitled'}
-          </span>
+          {leadingControls}
           <div data-tauri-drag-region className="h-full min-w-2 flex-1" />
           {trailingControls}
         </header>
       )}
 
       {/* Main Workspace Layout with Responsive Screen Adaptation */}
-      <div className={cn(
-        'relative min-h-0 min-w-0 flex-1 overflow-hidden',
-        !isCompact && 'grid',
-        !isCompact && leftPanelOpen && rightPanelOpen && 'grid-cols-[clamp(13rem,20vw,17rem)_minmax(0,1fr)_clamp(15rem,22vw,19rem)]',
-        !isCompact && leftPanelOpen && !rightPanelOpen && 'grid-cols-[clamp(13rem,20vw,17rem)_minmax(0,1fr)]',
-        !isCompact && !leftPanelOpen && rightPanelOpen && 'grid-cols-[minmax(0,1fr)_clamp(15rem,22vw,19rem)]',
-        !isCompact && !leftPanelOpen && !rightPanelOpen && 'grid-cols-[minmax(0,1fr)]',
-        isCompact && 'flex flex-row',
-      )}>
-        {/* Left Sidebar: Pages, Layers, Theme */}
+      <div
+        className={cn('relative min-h-0 min-w-0 flex-1 overflow-hidden', isCompact ? 'flex flex-row' : 'grid')}
+        style={isCompact ? undefined : {
+          gridTemplateColumns: [
+            leftPanelOpen ? `${leftWidth}px` : null,
+            'minmax(0,1fr)',
+            rightPanelOpen ? `${rightWidth}px` : null,
+          ].filter(Boolean).join(' '),
+        }}
+      >
+        {/* Left panel: the file's structure, what can be placed, its tokens. */}
         {leftPanelOpen ? (
           <aside
             aria-label="Layers"
             className={cn(
-              'flex min-h-0 min-w-0 flex-col overflow-hidden border-e border-line bg-surface text-foreground transition-all duration-200',
-              isCompact && 'absolute inset-y-0 start-0 z-40 w-72 shadow-panel-lg backdrop-blur-2xl bg-surface/95',
+              'relative flex min-h-0 min-w-0 flex-col border-e border-line bg-surface text-foreground',
+              isCompact && 'absolute inset-y-0 start-0 z-40 w-72 shadow-panel-lg',
             )}
           >
-            {/* The file's name, and the switch that hides this panel. */}
-            <div className="flex h-12 shrink-0 items-center justify-between gap-2 ps-4 pe-2.5">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <File01Icon className="size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 truncate text-xs font-medium text-foreground">{name || 'Scratchpad'}</span>
-              </div>
-              <button
-                type="button"
-                aria-label="Toggle layers panel"
-                data-cuelume-close=""
-                className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,color,transform] duration-150 ease-smooth hover:bg-accent hover:text-foreground active:scale-90"
-                onClick={() => setLeftPanelOpen(false)}
-              >
-                <PanelLeftIcon className="size-4" />
-              </button>
-            </div>
-
-            {/* Tactile segmented control for views */}
-            <div className="px-3 py-2 border-b border-line">
-              <div role="tablist" aria-label="Panel view" className="flex h-8 items-center rounded-xl bg-well/75 p-0.5 border border-line/40">
-                {([
-                  { tab: 'design', label: 'Layers', Icon: LayersIcon },
-                  { tab: 'theme', label: 'Theme', Icon: SlidersHorizontalIcon },
-                  { tab: 'assets', label: 'Assets', Icon: ImageIcon },
-                  { tab: 'icons', label: 'Icons', Icon: ShapesIcon },
-                  { tab: 'comments', label: 'Comments', Icon: MessageSquareIcon },
-                ] as const).map(({ tab, label, Icon }) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    role="tab"
-                    aria-selected={leftTab === tab}
-                    aria-label={tab}
-                    title={label}
-                    data-cuelume-select=""
-                    className={cn(
-                      'relative flex h-7 flex-1 items-center justify-center rounded-lg text-xs outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring',
-                      leftTab === tab
-                        ? 'bg-surface text-foreground shadow-xs font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-surface/40',
-                    )}
-                    onClick={() => setLeftTab(tab)}
-                  >
-                    <Icon className="size-3.5" />
-                    {tab === 'comments' && openCommentNodeIds.length > 0 ? (
-                      <span className="absolute right-1.5 top-1 size-1.5 rounded-full bg-cx-accent shadow-[0_0_4px_var(--cx-accent)]" />
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {isCompact ? null : (
+              <PanelResizer side="left" width={leftWidth} fallback={256} onResize={setLeftWidth} label="Resize layers panel" />
+            )}
+            <PanelTabs
+              label="Left panel"
+              value={leftTab}
+              onChange={setLeftTab}
+              options={[
+                // Pages and Layers live under it, so the tab names the whole file.
+                { value: 'design', label: 'File' },
+                { value: 'assets', label: 'Assets' },
+                { value: 'theme', label: 'Theme' },
+              ]}
+            />
             {leftTab === 'design' ? (
               <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
                 {/* Pages Section */}
@@ -3751,7 +3877,7 @@ export function WebCanvasEditor({
                       onClick={() => setPagesOpen((open) => !open)}
                     >
                       <ChevronDownIcon className={cn('size-3 transition-transform duration-200 ease-smooth', !pagesOpen && '-rotate-90')} />
-                      <span className="cx-label cx-bracket text-inherit">Pages</span>
+                      <span className="text-xs font-semibold text-foreground">Pages</span>
                     </button>
                     <button
                       type="button"
@@ -3789,7 +3915,7 @@ export function WebCanvasEditor({
                 {/* Layers Section */}
                 <div className="py-1">
                   <div className="flex h-8 items-center justify-between px-4 text-xs font-medium text-muted-foreground">
-                    <span className="cx-label cx-bracket">Layers</span>
+                    <span className="text-xs font-semibold text-foreground">Layers</span>
                   </div>
                   {/* Dropping on the empty space under the rows sets a layer last at the top
                       level, which is how a nested layer is pulled back out. */}
@@ -3895,24 +4021,31 @@ export function WebCanvasEditor({
                 </div>
               </div>
             ) : leftTab === 'assets' ? (
-              <AssetsPanel onInsert={(asset) => {
-                const place = placeInsert(240, 160)
-                insertElement('img', { x: place.x, y: place.y }, false, undefined, { src: assetSrc(asset), alt: asset.name }, place.parentId)
-                setLeftTab('design')
-                setTool('select')
-              }} />
-            ) : leftTab === 'comments' ? (
-              <CommentsList
-                comments={comments}
-                onSelectNode={(nodeId) => {
-                  if (document.nodes[nodeId]) select(nodeId)
-                  setThreadNodeId(nodeId)
-                }}
-                onResolve={resolveComment}
-                onDelete={removeComment}
-              />
-            ) : leftTab === 'icons' ? (
-              <IconsPanel onInsert={insertLibraryIcon} />
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="px-3 pt-2.5">
+                  <PanelSegment
+                    label="Asset kind"
+                    value={assetsKind}
+                    onChange={setAssetsKind}
+                    options={[
+                      { value: 'images', label: 'Images' },
+                      { value: 'icons', label: 'Icons' },
+                    ]}
+                  />
+                </div>
+                <div key={assetsKind} className="app-page-enter flex min-h-0 flex-1 flex-col">
+                  {assetsKind === 'images' ? (
+                    <AssetsPanel onInsert={(asset) => {
+                      const place = placeInsert(240, 160)
+                      insertElement('img', { x: place.x, y: place.y }, false, undefined, { src: assetSrc(asset), alt: asset.name }, place.parentId)
+                      setLeftTab('design')
+                      setTool('select')
+                    }} />
+                  ) : (
+                    <IconsPanel onInsert={insertLibraryIcon} />
+                  )}
+                </div>
+              </div>
             ) : (
               <ThemePanel document={document} transact={transact} />
             )}
@@ -3925,10 +4058,11 @@ export function WebCanvasEditor({
           ref={stageRef}
           style={canvasBg ? { ...stageDots(camera), backgroundColor: canvasBg } : stageDots(camera)}
           className={cn(
-            'relative min-h-0 flex-1 overflow-hidden bg-cx-canvas',
+            'relative min-h-0 flex-1 overflow-hidden bg-surface',
             isPanningActive ? 'cursor-grab active:cursor-grabbing' : tool === 'comment' ? 'cursor-crosshair' : 'cursor-default',
           )}
           onPointerDown={(event) => {
+            if ((event.target as HTMLElement)?.closest?.('[role="toolbar"]')) return
             startDrawing(event)
             if (!drawingRef.current) startPan(event)
             if (!drawingRef.current && !dragRef.current) startBodyDrag(event)
@@ -3968,6 +4102,7 @@ export function WebCanvasEditor({
             if (tool === 'image') {
               setLeftPanelOpen(true)
               setLeftTab('assets')
+              setAssetsKind('images')
               return
             }
             if (tool === 'pen') insertPenPath(point)
@@ -3990,150 +4125,17 @@ export function WebCanvasEditor({
           }}
           onPointerLeave={() => hover(null)}
         >
-          {/* Floating Vertical Toolbar (Precision Island) */}
-          <div
-            role="toolbar"
-            aria-label="Tools"
-            data-cuelume-theme="mech"
-            className="absolute left-3.5 top-3.5 z-30 flex flex-col items-center gap-1 rounded-2xl border border-edge/80 bg-surface/85 backdrop-blur-2xl p-1.5 text-foreground shadow-panel-lg ring-1 ring-white/10 dark:ring-white/5"
-          >
-            <WebToolButton
-              label={`Select (${shortcutLabel('tool.select')})`}
-              aria-label="Select"
-              active={tool === 'select' && !isSpacePanning}
-              onClick={() => setTool('select')}
+          {/* Vertical Toolbar on the left */}
+          {focusMode ? null : (
+            <div
+              role="toolbar"
+              aria-label="Tools"
+              data-cuelume-theme="mech"
+              className="absolute left-3 top-3 z-30 flex flex-col items-center gap-0.5 rounded-lg border border-line/80 bg-surface/95 p-1 text-foreground shadow-raised backdrop-blur-sm"
             >
-              <MousePointer2Icon className="size-4" />
-            </WebToolButton>
-            <WebToolButton
-              label={`Hand (${shortcutLabel('tool.hand')})`}
-              aria-label="Hand"
-              active={tool === 'pan' || isSpacePanning}
-              onClick={() => setTool('pan')}
-            >
-              <HandIcon className="size-4" />
-            </WebToolButton>
-            <WebToolButton
-              label="Comment (C)"
-              aria-label="Comment"
-              active={tool === 'comment'}
-              onClick={() => setTool('comment')}
-            >
-              <MessageSquareIcon className="size-4" />
-            </WebToolButton>
-
-            <div className="my-0.5 h-px w-5 bg-line" />
-
-            <WebToolButton
-              label={`Frame (${shortcutLabel('tool.frame')})`}
-              aria-label="Frame"
-              active={tool === 'frame'}
-              onClick={() => {
-                setTool('frame')
-                // The size list lives in the right panel; make sure it is there to see.
-                setRightPanelOpen(true)
-              }}
-            >
-              <FrameIcon className="size-4" />
-            </WebToolButton>
-            <WebToolButton
-              label={`Rectangle (${shortcutLabel('tool.box')})`}
-              aria-label="Rectangle"
-              active={tool === 'box'}
-              onClick={() => setTool('box')}
-            >
-              <SquareIcon className="size-4" />
-            </WebToolButton>
-            <WebToolButton
-              label={`Pen (${shortcutLabel('tool.pen')})`}
-              aria-label="Pen"
-              active={tool === 'pen'}
-              onClick={() => setTool('pen')}
-            >
-              <PenTool01Icon className="size-4" />
-            </WebToolButton>
-            <WebToolButton
-              label={`Text (${shortcutLabel('tool.text')})`}
-              aria-label="Text"
-              active={tool === 'text'}
-              onClick={() => setTool('text')}
-            >
-              <TypeIcon className="size-4" />
-            </WebToolButton>
-
-            {/* Quick insert (+) button */}
-            <div className="relative">
-              <WebToolButton
-                label="Insert element (+)"
-                aria-label="Insert element"
-                active={quickInsertOpen}
-                onClick={() => setQuickInsertOpen((open) => !open)}
-              >
-                <PlusCircleIcon className="size-4" />
-              </WebToolButton>
-              {quickInsertOpen ? (
-                <div className="absolute left-full top-0 z-40 ms-2 w-36 rounded-lg bg-popover p-1 shadow-panel-lg text-foreground">
-                  <div className="cx-label cx-bracket px-2 py-1.5">Insert element</div>
-                  <div className="max-h-[min(14rem,50vh)] space-y-0.5 overflow-y-auto">
-                    {ELEMENT_TAGS.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        className="flex w-full items-center justify-between rounded px-2 py-1 text-left font-mono text-xs text-foreground hover:bg-secondary"
-                        onClick={() => {
-                          insertElement(tag)
-                          setQuickInsertOpen(false)
-                        }}
-                      >
-                        <span>&lt;{tag}&gt;</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+              {toolButtons}
             </div>
-
-            <div className="my-0.5 h-px w-5 bg-line" />
-
-            <WebToolButton
-              label="Icon library"
-              aria-label="Icon library"
-              active={leftPanelOpen && leftTab === 'icons'}
-              onClick={() => {
-                setLeftPanelOpen(true)
-                setLeftTab('icons')
-              }}
-            >
-              <ComponentIcon className="size-4" />
-            </WebToolButton>
-            <WebToolButton
-              label="Shaders"
-              aria-label="Shaders"
-              active={shadersOpen}
-              onClick={() => setShadersOpen(true)}
-            >
-              <ColorsIcon className="size-4" />
-            </WebToolButton>
-            <WebToolButton
-              label={`Image (${shortcutLabel('tool.image')})`}
-              aria-label="Image"
-              active={tool === 'image'}
-              onClick={() => {
-                setTool('image')
-                setLeftPanelOpen(true)
-                setLeftTab('assets')
-              }}
-            >
-              <ImageIcon className="size-4" />
-            </WebToolButton>
-            <WebToolButton
-              label="Fit canvas"
-              aria-label="Fit canvas"
-              onClick={fitToView}
-            >
-              <CropIcon className="size-4" />
-            </WebToolButton>
-          </div>
+          )}
 
           {/* Rendered Document View */}
           <div
@@ -4226,10 +4228,12 @@ export function WebCanvasEditor({
               <div
                 key={id}
                 className={cn(
-                  'pointer-events-auto absolute z-20 flex h-6 max-w-[min(20rem,100%)] items-center gap-1.5 rounded-t-lg px-2 text-[11px] font-mono tracking-tight transition-[background-color,border-color,color,box-shadow,opacity] duration-150',
+                  // Opaque on purpose: a backdrop blur here repaints on every pan
+                  // frame, which WebKitGTK on Linux in particular cannot keep up with.
+                  'pointer-events-auto absolute z-20 flex h-6 max-w-[min(20rem,100%)] items-center gap-1.5 rounded-t-lg px-2 text-[11px] font-mono tracking-tight transition-[background-color,color,box-shadow] duration-150',
                   isSelected
-                    ? 'bg-cx-accent text-white font-medium shadow-[0_2px_5px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.3)] ring-1 ring-cx-accent/90'
-                    : 'bg-surface/95 backdrop-blur-md text-muted-foreground hover:text-foreground border border-b-0 border-edge shadow-[0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)]',
+                    ? 'bg-cx-accent font-medium text-cx-accent-foreground shadow-[0_0_0_1px_var(--cx-accent),inset_0_1px_0_rgba(255,255,255,0.25)]'
+                    : 'bg-surface text-muted-foreground shadow-raised hover:text-foreground',
                 )}
                 style={{ left: rect.left, top: rect.top - 24 }}
               >
@@ -4238,7 +4242,7 @@ export function WebCanvasEditor({
                     autoFocus
                     aria-label="Frame name"
                     defaultValue={node.attributes[NAME_ATTRIBUTE] ?? label}
-                    className="h-4.5 w-36 rounded bg-surface px-1.5 text-[11px] text-foreground outline-none ring-1 ring-cx-accent shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]"
+                    className="h-4.5 w-36 rounded bg-surface px-1.5 text-[11px] text-foreground shadow-sunken outline-none"
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
                     onDoubleClick={(event) => event.stopPropagation()}
@@ -4392,7 +4396,7 @@ export function WebCanvasEditor({
           {/* Empty Canvas Starter Plate */}
           {frameIds.length === 0 && layerIds.length === 0 ? (
             <div
-              className="pointer-events-auto absolute left-1/2 top-1/2 z-20 flex w-full max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col items-center rounded-2xl border border-edge/80 bg-surface/90 backdrop-blur-2xl p-6 text-center shadow-panel-lg"
+              className="pointer-events-auto absolute left-1/2 top-1/2 z-20 flex w-full max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col items-center rounded-2xl bg-surface p-6 text-center shadow-panel-lg"
             >
               <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-cx-accent/10 text-cx-accent shadow-xs">
                 <FrameIcon className="size-6" />
@@ -4412,7 +4416,7 @@ export function WebCanvasEditor({
                     key={preset.name}
                     type="button"
                     onClick={() => insertFrame(preset)}
-                    className="cx-press flex flex-col items-start rounded-xl border border-line bg-surface-2/60 p-2.5 text-start transition-all hover:border-cx-accent/50 hover:bg-surface hover:shadow-xs"
+                    className="cx-tile flex flex-col items-start rounded-xl bg-surface p-2.5 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span className="truncate text-xs font-medium text-foreground">{preset.name}</span>
                     <span className="mt-0.5 text-[10px] text-muted-foreground">
@@ -4428,13 +4432,13 @@ export function WebCanvasEditor({
           <div
             role="region"
             aria-label="Canvas zoom and view controls"
-            className="absolute bottom-4 end-4 z-30 flex items-center gap-1 rounded-2xl border border-edge/80 bg-surface/85 backdrop-blur-2xl p-1 text-foreground shadow-panel-lg ring-1 ring-white/10 dark:ring-white/5"
+            className="absolute bottom-4 end-4 z-30 flex items-center gap-1 rounded-lg border border-line/80 bg-surface/95 p-1 text-foreground shadow-raised backdrop-blur-sm"
           >
             <button
               type="button"
               aria-label="Zoom out"
               title="Zoom out"
-              className="flex size-7 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground active:scale-90"
+              className={ZOOM_KEY}
               onClick={() => zoomStage(0.85)}
             >
               <MinusIcon className="size-3.5" />
@@ -4446,14 +4450,14 @@ export function WebCanvasEditor({
                 aria-label="Zoom presets"
                 title="Select zoom level"
                 aria-expanded={zoomMenuOpen}
-                className="flex h-7 items-center rounded-xl px-2 font-mono text-[11px] font-medium text-foreground transition-all duration-150 hover:bg-accent/80 active:scale-95"
+                className="flex h-7 min-w-12 items-center justify-center rounded-md px-2 font-mono text-[11px] font-medium tabular-nums text-foreground outline-none transition-[background-color,scale] duration-150 ease-smooth hover:bg-accent active:scale-[0.95] focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-accent"
                 onClick={() => setZoomMenuOpen((open) => !open)}
               >
                 {Math.round(camera.zoom * 100)}%
               </button>
               {zoomMenuOpen ? (
                 <div
-                  className="absolute bottom-full end-0 z-40 mb-2 w-36 rounded-xl border border-edge bg-surface/95 backdrop-blur-2xl p-1 text-foreground shadow-panel-lg"
+                  className="app-page-enter absolute bottom-full end-0 z-40 mb-2 w-36 origin-bottom-right rounded-xl bg-popover p-1 text-foreground shadow-panel-lg"
                 >
                   {[
                     { label: '50%', zoom: 0.5 },
@@ -4482,7 +4486,7 @@ export function WebCanvasEditor({
                     }}
                   >
                     <span>Fit to view</span>
-                    <kbd className="font-mono text-[9px] text-muted-foreground">⇧1</kbd>
+                    <kbd className="font-sans text-[10px] tabular-nums text-muted-foreground">{shortcutLabel('zoomToFit')}</kbd>
                   </button>
                 </div>
               ) : null}
@@ -4492,7 +4496,7 @@ export function WebCanvasEditor({
               type="button"
               aria-label="Zoom in"
               title="Zoom in"
-              className="flex size-7 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground active:scale-90"
+              className={ZOOM_KEY}
               onClick={() => zoomStage(1.15)}
             >
               <PlusIcon className="size-3.5" />
@@ -4503,8 +4507,8 @@ export function WebCanvasEditor({
             <button
               type="button"
               aria-label="Fit to canvas"
-              title="Fit to canvas (⇧1)"
-              className="flex size-7 items-center justify-center rounded-xl text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground active:scale-90"
+              title={`Fit to canvas (${shortcutLabel('zoomToFit')})`}
+              className={ZOOM_KEY}
               onClick={fitToView}
             >
               <CropIcon className="size-3.5" />
@@ -4516,9 +4520,9 @@ export function WebCanvasEditor({
               aria-pressed={focusMode}
               title={focusMode ? 'Exit focus mode (\\)' : 'Focus mode / Zen canvas (\\)'}
               className={cn(
-                'flex size-7 items-center justify-center rounded-xl transition-all duration-150 active:scale-90',
+                'flex size-7 items-center justify-center rounded-md outline-none transition-[background-color,color,scale] duration-150 ease-smooth active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-ring',
                 focusMode
-                  ? 'bg-cx-accent text-white shadow-xs'
+                  ? 'bg-cx-accent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]'
                   : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground',
               )}
               onClick={toggleFocusMode}
@@ -4533,39 +4537,56 @@ export function WebCanvasEditor({
         <aside
           aria-label="Design"
           className={cn(
-            'flex min-h-0 min-w-0 flex-col overflow-hidden border-s border-line bg-surface text-foreground transition-all duration-200',
-            isCompact && 'absolute inset-y-0 end-0 z-40 w-80 shadow-panel-lg backdrop-blur-2xl bg-surface/95',
+            'relative flex min-h-0 min-w-0 flex-col border-s border-line bg-surface text-foreground',
+            isCompact && 'absolute inset-y-0 end-0 z-40 w-80 shadow-panel-lg',
           )}
         >
-          <div className="flex h-11 shrink-0 items-center justify-between border-b border-line px-4 text-foreground">
-            <span className="cx-label cx-bracket">{tool === 'frame' ? 'Frame' : 'Design'}</span>
-            <div className="flex items-center gap-1">
-              {tool === 'frame' ? null : (
+          {isCompact ? null : (
+            <PanelResizer side="right" width={rightWidth} fallback={288} onResize={setRightWidth} label="Resize design panel" />
+          )}
+          <PanelTabs
+            label="Right panel"
+            value={rightTab}
+            onChange={setRightTab}
+            options={[
+              { value: 'design', label: tool === 'frame' ? 'Frame' : 'Design' },
+              {
+                value: 'comments',
+                label: 'Comments',
+                badge: openCommentNodeIds.length > 0 ? (
+                  <span className="min-w-4 rounded-full bg-cx-accent px-1 text-center text-[10px] font-medium tabular-nums leading-4 text-white">
+                    {openCommentNodeIds.length}
+                  </span>
+                ) : undefined,
+              },
+            ]}
+            trailing={
+              rightTab === 'design' && tool !== 'frame' && selectedId ? (
                 <button
                   type="button"
-                  disabled={!selectedId || saveStatus === 'saving'}
-                  className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                  disabled={saveStatus === 'saving'}
+                  className="grid size-7 place-items-center rounded-md text-muted-foreground outline-none transition-[background-color,color] duration-150 hover:bg-destructive/10 hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30"
                   onClick={deleteSelected}
-                  title="Delete element"
+                  title="Delete element (Del)"
+                  aria-label="Delete selected element"
                 >
                   <Trash2Icon className="size-3.5" />
-                  <span className="sr-only">Delete selected element</span>
                 </button>
-              )}
-              {isCompact ? (
-                <button
-                  type="button"
-                  aria-label="Close inspector"
-                  className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                  onClick={() => setRightPanelOpen(false)}
-                >
-                  <PanelRightIcon className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-            {tool === 'frame' ? <FramePresetsPanel onPick={insertFrame} /> : (
+              ) : null
+            }
+          />
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
+            {rightTab === 'comments' ? (
+              <CommentsList
+                comments={comments}
+                onSelectNode={(nodeId) => {
+                  if (document.nodes[nodeId]) select(nodeId)
+                  setThreadNodeId(nodeId)
+                }}
+                onResolve={resolveComment}
+                onDelete={removeComment}
+              />
+            ) : tool === 'frame' ? <FramePresetsPanel onPick={insertFrame} /> : (
             <WebInspector
               node={selectedNode}
               geometry={selectionRect ? {
@@ -4580,7 +4601,7 @@ export function WebCanvasEditor({
               override={selectedOverride}
               pageBackground={isBoundedPage(document, pageId)
                 ? pageBackground
-                : (canvasBg ?? (globalThis.document?.documentElement.classList.contains('dark') ? '#272727' : '#f2f2f0'))}
+                : (canvasBg ?? (globalThis.document?.documentElement.classList.contains('dark') ? '#272727' : '#ffffff'))}
               boundedPage={isBoundedPage(document, pageId)}
               pageSize={pageResizePreview ?? { width: canvasWidth, height: canvasHeight }}
               fonts={fonts}
@@ -4607,6 +4628,18 @@ export function WebCanvasEditor({
               onDeleteInstance={deleteSelectedInstance}
             />
             )}
+          </div>
+          <div className="flex shrink-0 justify-start p-1.5">
+            <button
+              type="button"
+              aria-label="Close panel"
+              title="Close panel"
+              data-cuelume-tap=""
+              className="grid size-7 place-items-center rounded-md text-muted-foreground outline-none transition-[background-color,color,scale] duration-150 ease-smooth hover:bg-foreground/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.92]"
+              onClick={() => setRightPanelOpen(false)}
+            >
+              <ChevronRightIcon className="size-3.5" />
+            </button>
           </div>
         </aside>
         ) : null}

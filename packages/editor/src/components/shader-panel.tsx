@@ -81,7 +81,7 @@ export function ShaderGallery({
         <div className="min-h-0 flex-1 overflow-y-auto pb-4">
           {groups().map((group) => (
             <section key={group.id} className="border-t border-line px-4 py-4 first:border-t-0">
-              <h3 className="cx-label cx-bracket mb-3">{group.label}</h3>
+              <h3 className="mb-3 text-xs font-semibold text-foreground">{group.label}</h3>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                 {group.names.map((name) => (
                   <button

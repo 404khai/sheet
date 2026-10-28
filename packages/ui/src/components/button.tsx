@@ -8,7 +8,7 @@ import { cn } from "../lib/utils.ts";
 import { Spinner } from "./spinner.tsx";
 
 export const buttonVariants = cva(
-  "relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border font-medium text-sm outline-none transition-[background-color,box-shadow,color,transform] duration-150 ease-smooth active:scale-[0.97] pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-56 data-loading:select-none data-loading:text-transparent sm:text-xs [&_svg:not([class*='opacity-'])]:opacity-72 [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border font-medium text-sm outline-none transition-[background-color,box-shadow,color,scale] duration-150 ease-smooth active:scale-[0.97] active:duration-75 pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-56 data-loading:select-none data-loading:text-transparent sm:text-xs [&_svg:not([class*='opacity-'])]:opacity-72 [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     defaultVariants: {
       size: "default",
@@ -31,18 +31,18 @@ export const buttonVariants = cva(
       },
       variant: {
         default:
-          "border-primary/20 bg-primary text-primary-foreground shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-primary/92 hover:shadow-[0_2px_6px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.3)] active:shadow-[0_1px_1px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(0,0,0,0.2)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.15)] ring-1 ring-black/10 dark:ring-white/10 *:data-[slot=button-loading-indicator]:text-primary-foreground",
+          "border-transparent bg-primary text-primary-foreground shadow-raised-ink hover:bg-primary/90 *:data-[slot=button-loading-indicator]:text-primary-foreground",
         destructive:
-          "border-destructive/20 bg-destructive text-white shadow-[0_1px_3px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-destructive/90 hover:shadow-[0_2px_6px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.3)] *:data-[slot=button-loading-indicator]:text-white",
+          "border-transparent bg-destructive text-white shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.2)] hover:bg-destructive/90 *:data-[slot=button-loading-indicator]:text-white",
         "destructive-outline":
-          "border-destructive/30 bg-destructive/5 text-destructive-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.4)] hover:bg-destructive/12 hover:border-destructive/50 data-pressed:bg-destructive/15 *:data-[slot=button-loading-indicator]:text-foreground",
+          "border-transparent bg-surface text-destructive-foreground shadow-raised hover:bg-destructive/6 hover:shadow-raised-hover active:shadow-pressed data-pressed:bg-destructive/10 *:data-[slot=button-loading-indicator]:text-foreground",
         ghost:
           "border-transparent text-foreground hover:bg-accent data-pressed:bg-accent *:data-[slot=button-loading-indicator]:text-foreground",
         link: "border-transparent text-foreground underline-offset-4 hover:underline data-pressed:underline *:data-[slot=button-loading-indicator]:text-foreground",
         outline:
-          "border-border/80 bg-surface/85 text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.8)] hover:bg-accent/80 hover:border-border hover:shadow-[0_2px_5px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] active:shadow-inner dark:shadow-[0_1px_2px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.06)] *:data-[slot=button-loading-indicator]:text-foreground",
+          "border-transparent bg-surface text-foreground shadow-raised hover:shadow-raised-hover active:shadow-pressed data-pressed:shadow-pressed *:data-[slot=button-loading-indicator]:text-foreground",
         secondary:
-          "border-border/70 bg-secondary/85 text-secondary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.8)] hover:bg-secondary hover:shadow-[0_2px_5px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] active:shadow-inner dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] *:data-[slot=button-loading-indicator]:text-secondary-foreground",
+          "border-transparent bg-secondary text-secondary-foreground shadow-raised hover:bg-surface hover:shadow-raised-hover active:shadow-pressed *:data-[slot=button-loading-indicator]:text-secondary-foreground",
       },
     },
   },

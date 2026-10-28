@@ -10,6 +10,7 @@ export interface OpenTab {
 
 const STORAGE_KEY = 'sheet:open-tabs'
 const EVENT_KEY = 'sheet:open-tabs-changed'
+const LAST_FILE_KEY = 'sheet:last-file'
 
 export function getStoredTabs(): OpenTab[] {
   if (typeof window === 'undefined') return []
@@ -173,5 +174,20 @@ export function useRegisterOpenTab(activeDocument?: { id: string; name: string }
     } else if (name && current[index]?.name !== name) {
       saveStoredTabs(current.map((tab) => (tab.id === id ? { ...tab, name } : tab)))
     }
+    try {
+      localStorage.setItem(LAST_FILE_KEY, id)
+    } catch {
+      // Without storage the app simply opens on Home next time.
+    }
   }, [id, name])
+}
+
+/** The file opened most recently, if it is still among the open tabs. */
+export function getLastOpenFile(): string | null {
+  try {
+    const id = localStorage.getItem(LAST_FILE_KEY)
+    return id && getStoredTabs().some((tab) => tab.id === id) ? id : null
+  } catch {
+    return null
+  }
 }

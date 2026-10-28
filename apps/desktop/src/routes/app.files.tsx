@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { DesignsDashboard } from '@sheet/shell/designs-dashboard'
+import { Home } from '@sheet/shell/home'
 
 export const Route = createFileRoute('/app/files')({ component: AppFilesPage })
 
+/** The old Files page: Home, scrolled to the full list. */
 function AppFilesPage() {
-  return <DesignsDashboard title="Files" />
+  return <Home initialSection="files" />
 }

@@ -37,7 +37,7 @@ export function Input({
       className={
         cn(
           !unstyled &&
-            "relative inline-flex w-full rounded-lg border border-border/80 bg-surface-2/50 text-sm text-foreground shadow-[inset_0_1px_2px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.7)] dark:bg-surface-2/30 dark:border-border/60 dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35),0_1px_0_rgba(255,255,255,0.06)] transition-all duration-150 ease-smooth hover:border-border has-focus-visible:border-cx-accent has-focus-visible:ring-2 has-focus-visible:ring-cx-accent/30 has-focus-visible:has-aria-invalid:border-destructive has-aria-invalid:border-destructive/60 has-autofill:bg-foreground/4 has-disabled:opacity-56 sm:text-xs dark:has-autofill:bg-foreground/8",
+            "relative inline-flex w-full rounded-lg border border-transparent bg-well/60 text-sm text-foreground shadow-sunken transition-[background-color,box-shadow,border-color] duration-150 ease-smooth hover:bg-well has-focus-visible:border-cx-accent has-focus-visible:bg-surface has-focus-visible:ring-3 has-focus-visible:ring-cx-accent/20 has-focus-visible:has-aria-invalid:border-destructive has-aria-invalid:border-destructive/60 has-autofill:bg-foreground/4 has-disabled:opacity-56 sm:text-xs dark:has-autofill:bg-foreground/8",
           className,
         ) || undefined
       }

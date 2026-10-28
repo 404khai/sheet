@@ -1,16 +1,20 @@
 /* Two palettes, light and dark. Nothing else.
 
-   One idea: flat planes divided by hairlines. No gradients, no inset
-   highlights, no stacked shadows. Depth comes from a step in tone and a 1px
-   edge; the only shadow left is the one a floating menu needs to separate
-   from what is under it. One accent — a warm orange — is spent on selection,
-   focus and the live mark, so it always means "this". */
+   One idea: quiet planes with a light, physical elevation. Every surface is
+   one of four heights, each a token so both palettes stay in step:
+   sunken (`--sunken`: fields, tracks, wells), raised (`--raised`: keys and
+   chosen tabs, `--raised-hover`, `--pressed`), lifted (`--lift`: cards and
+   tiles) and floating (`--panel-shadow-lg`: menus, dialogs, canvas islands).
+   One accent — a warm orange by default — is spent on selection, focus and
+   the live mark, so it always means "this". */
 
 :root {
   --cx-canvas: #f2f2f0;
   --cx-dot: #d6d6d2;
   --cx-ink: #0d0d0d;
   --cx-accent: #f0541a;
+  /* Text and marks drawn on an accent fill. White for every hue; Mono flips it. */
+  --cx-accent-foreground: #ffffff;
 
   --background: #fafaf9;
   --foreground: var(--cx-ink);
@@ -37,7 +41,7 @@
   --chart-3: #d8874a;
   --chart-4: #10b981;
   --chart-5: #3b82f6;
-  --radius: 0.5rem;
+  --radius: 0.375rem;
   --sidebar: #efefed;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--cx-accent);
@@ -102,6 +106,13 @@
   --lift: var(--panel-shadow);
   --lift-hover: 0 0 0 1px var(--edge), 0 4px 14px -3px rgba(13, 13, 13, 0.12), inset 0 1px 0 var(--highlight);
   --lift-selected: 0 0 0 1.5px var(--cx-accent), 0 4px 16px -2px --alpha(var(--cx-accent) / 22%), inset 0 1px 0 var(--highlight);
+  /* Controls: a raised key, the same key hovered, the key held down, and the
+     sunken well that fields and tracks sit in. The primary key is ink. */
+  --raised: 0 0 0 1px var(--edge), 0 1px 1.5px rgba(13, 13, 13, 0.06), inset 0 1px 0 var(--highlight);
+  --raised-hover: 0 0 0 1px rgba(13, 13, 13, 0.12), 0 2px 5px -1px rgba(13, 13, 13, 0.1), inset 0 1px 0 var(--highlight);
+  --pressed: 0 0 0 1px var(--edge), inset 0 1px 2px rgba(13, 13, 13, 0.1);
+  --sunken: 0 0 0 1px var(--edge), inset 0 1px 2px rgba(13, 13, 13, 0.05);
+  --raised-ink: 0 0 0 1px rgba(13, 13, 13, 0.9), 0 1px 2px rgba(13, 13, 13, 0.2), 0 2px 6px -2px rgba(13, 13, 13, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.16);
   color-scheme: light;
 }
 
@@ -182,6 +193,11 @@
   --lift: var(--panel-shadow);
   --lift-hover: 0 0 0 1px var(--edge), 0 4px 16px -2px rgba(0, 0, 0, 0.6), inset 0 1px 0 var(--highlight);
   --lift-selected: 0 0 0 1.5px var(--cx-accent), 0 4px 16px -2px --alpha(var(--cx-accent) / 28%), inset 0 1px 0 var(--highlight);
+  --raised: 0 0 0 1px var(--edge), 0 1px 2px rgba(0, 0, 0, 0.45), inset 0 1px 0 var(--highlight);
+  --raised-hover: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 2px 6px -1px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--highlight);
+  --pressed: 0 0 0 1px var(--edge), inset 0 1px 3px rgba(0, 0, 0, 0.45);
+  --sunken: 0 0 0 1px var(--edge), inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  --raised-ink: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px -2px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.12);
   color-scheme: dark;
 }
 
@@ -199,3 +215,6 @@ html[data-accent='pink'] { --cx-accent: #db2777; }
 html.dark[data-accent='pink'] { --cx-accent: #f0549b; }
 html[data-accent='teal'] { --cx-accent: #0d8f86; }
 html.dark[data-accent='teal'] { --cx-accent: #14a89d; }
+/* Mono: the accent is the ink itself, so whatever sits on it takes the paper. */
+html[data-accent='mono'] { --cx-accent: #0d0d0d; --cx-accent-foreground: #ffffff; }
+html.dark[data-accent='mono'] { --cx-accent: #ececea; --cx-accent-foreground: #0d0d0d; }

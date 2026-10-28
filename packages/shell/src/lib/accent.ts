@@ -8,6 +8,8 @@ export const ACCENTS = [
   { id: 'green', label: 'Green', light: '#0f9d58', dark: '#1fb86b' },
   { id: 'pink', label: 'Pink', light: '#db2777', dark: '#f0549b' },
   { id: 'teal', label: 'Teal', light: '#0d8f86', dark: '#14a89d' },
+  // Black and white only: ink in light mode, paper in dark.
+  { id: 'mono', label: 'Mono', light: '#0d0d0d', dark: '#ececea' },
 ] as const
 
 export type AccentId = (typeof ACCENTS)[number]['id']

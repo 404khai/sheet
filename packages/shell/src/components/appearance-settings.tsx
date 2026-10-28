@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { cn } from '@sheet/ui/utils'
 import {
   ACCENTS,
@@ -29,6 +29,7 @@ import {
   setUiFontWeight,
   UI_FONTS,
   UI_FONT_WEIGHTS,
+  type UiFont,
   type UiFontId,
   type UiFontWeightValue,
 } from '../lib/ui-font'
@@ -98,7 +99,108 @@ const SCALE_LABELS: Record<UiScale, string> = {
   1.5: 'Largest',
 }
 
-/** An on/off row: its state in words, and a hairline track with a square that travels it. */
+const FONT_FILTERS = [
+  { value: 'All', label: 'All' },
+  { value: 'Sans Serif', label: 'Sans' },
+  { value: 'Monospace', label: 'Mono' },
+  { value: 'Display', label: 'Display' },
+] as const satisfies ReadonlyArray<{ value: 'All' | UiFont['category']; label: string }>
+
+type FontFilter = (typeof FONT_FILTERS)[number]['value']
+
+/** The sunken track every stepped control sits in. */
+const WELL = 'rounded-xl bg-well shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.45)]'
+
+/**
+ * The chosen-mark: a check in the accent. It stays mounted and resolves out of
+ * a blur, so choosing reads as the mark arriving rather than a pop.
+ */
+export function Mark({ on, className }: { on: boolean; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'grid size-4 shrink-0 place-items-center rounded-full bg-cx-accent text-white transition-[opacity,scale,filter] duration-200 ease-[cubic-bezier(0.2,0,0,1)]',
+        on ? 'scale-100 opacity-100 blur-[0px]' : 'scale-[0.25] opacity-0 blur-[4px]',
+        className,
+      )}
+    >
+      <svg viewBox="0 0 16 16" className="size-2.5">
+        <path d="M4 8.5 6.8 11 12 5.5" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  )
+}
+
+/**
+ * A row of stops in a sunken track, with one raised thumb that glides to the
+ * choice. Arrow keys move the choice, as in any radio group, and only the
+ * chosen stop takes a tab stop.
+ */
+export function Segmented<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T
+  options: ReadonlyArray<{ value: T; content: ReactNode; name?: string }>
+  onChange: (next: T) => void
+}) {
+  const index = Math.max(0, options.findIndex((option) => option.value === value))
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const delta =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0
+    if (delta === 0) return
+    event.preventDefault()
+    const nextIndex = (index + delta + options.length) % options.length
+    const next = options[nextIndex]
+    if (!next) return
+    onChange(next.value)
+    event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')[nextIndex]?.focus()
+  }
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={cn('relative grid auto-cols-fr grid-flow-col p-1', WELL)}
+      onKeyDown={onKeyDown}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-1 start-1 rounded-lg bg-surface shadow-lift transition-transform duration-[260ms] ease-[cubic-bezier(0.23,1,0.32,1)]"
+        style={{ width: `calc((100% - 0.5rem) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
+      />
+      {options.map((option) => {
+        const selected = option.value === value
+        return (
+          <button
+            key={String(option.value)}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-label={option.name}
+            tabIndex={selected ? 0 : -1}
+            className={cn(
+              'group relative z-10 flex min-h-10 min-w-0 items-center justify-center rounded-lg px-1.5 py-2 text-xs outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring',
+              selected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+            onClick={() => onChange(option.value)}
+          >
+            <span className="flex min-w-0 flex-col items-center gap-1.5 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] group-active:scale-[0.96]">
+              {option.content}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** An on/off row: its state in words, and a track with a knob that travels it. */
 export function SwitchRow({
   label,
   checked,
@@ -114,23 +216,28 @@ export function SwitchRow({
       role="switch"
       aria-checked={checked}
       aria-label={label}
-      className="flex h-11 items-center justify-between rounded-xl border border-line/70 bg-surface-2/40 px-3.5 text-xs text-foreground shadow-[inset_0_1px_1.5px_rgba(0,0,0,0.04),0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.05)] outline-none transition-all duration-150 hover:bg-surface-2/70 focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        'group flex h-11 items-center justify-between px-3.5 text-xs text-foreground outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring',
+        WELL,
+      )}
       onClick={() => onChange(!checked)}
     >
-      <span className="font-medium text-xs">{checked ? 'Enabled' : 'Disabled'}</span>
+      <span key={String(checked)} className="cx-swap font-medium">
+        {checked ? 'On' : 'Off'}
+      </span>
       <span
         aria-hidden="true"
         className={cn(
-          'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 border border-border/70 transition-colors duration-200 ease-smooth',
+          'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 ease-smooth',
           checked
             ? 'bg-cx-accent shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-            : 'bg-surface shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] dark:bg-surface-2',
+            : 'bg-muted-foreground/25 shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
         )}
       >
         <span
           className={cn(
-            'inline-block size-3.5 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.95)] transition-transform duration-200 ease-smooth',
-            checked ? 'translate-x-4' : 'translate-x-0',
+            'inline-block h-4 w-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-[transform,width] duration-200 ease-smooth group-active:w-5',
+            checked ? 'translate-x-4 group-active:translate-x-3' : 'translate-x-0',
           )}
         />
       </span>
@@ -138,45 +245,65 @@ export function SwitchRow({
   )
 }
 
+/**
+ * One raised card per setting: what it is, why, and — when there is one — the
+ * current value, which re-settles whenever it changes. The body is a container,
+ * so what sits in it lays out for the card's width, not the window's.
+ */
 export function Section({
   label,
   hint,
+  value,
+  flat = false,
   children,
 }: {
   label: string
   hint: string
+  value?: string
+  /** No card of its own, for use inside a surface that is already raised (onboarding). */
+  flat?: boolean
   children: ReactNode
 }) {
   return (
-    <section className="flex flex-col gap-3.5 rounded-2xl border border-line/70 bg-surface/80 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-sm">
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">{label}</h3>
-        <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-      </div>
-      {children}
+    <section className={cn('flex flex-col gap-4', !flat && 'rounded-2xl bg-surface p-4 shadow-lift sm:p-5')}>
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="text-[13px] font-semibold tracking-tight text-foreground">{label}</h3>
+          <p className="mt-1 text-xs leading-relaxed text-pretty text-muted-foreground">{hint}</p>
+        </div>
+        {value ? (
+          <span key={value} className="cx-swap shrink-0 pt-px text-[11px] tabular-nums text-muted-foreground">
+            {value}
+          </span>
+        ) : null}
+      </header>
+      <div className="@container flex flex-col gap-3">{children}</div>
     </section>
   )
 }
 
 /**
- * Theme, accent and interface size. Every choice applies the moment it is
- * made, in this window and in the app's other windows: the whole app is the
- * preview, which beats a swatch for a choice about colour or size.
+ * Theme, accent, typeface and interface size. Every choice applies the moment
+ * it is made, in this window and in the app's other windows: the whole app is
+ * the preview, which beats a swatch for a choice about colour or size.
  */
 export function AppearanceSettings({
   className,
   showScale = true,
+  flat = false,
 }: {
   className?: string
   /** Interface size is left out of first-run onboarding; Settings keeps it. */
   showScale?: boolean
+  /** Sections without cards of their own, inside an already-raised surface. */
+  flat?: boolean
 }) {
   const [theme, setTheme] = useState<ThemePreference>(DEFAULT_THEME)
   const [accent, setAccentState] = useState<AccentId>(DEFAULT_ACCENT)
   const [scale, setScale] = useState<UiScale>(DEFAULT_UI_SCALE)
   const [font, setFontState] = useState<UiFontId>(DEFAULT_UI_FONT)
   const [fontWeight, setFontWeightState] = useState<UiFontWeightValue>(DEFAULT_UI_FONT_WEIGHT)
-  const [fontFilter, setFontFilter] = useState<'All' | 'Sans Serif' | 'Monospace' | 'Display'>('All')
+  const [fontFilter, setFontFilter] = useState<FontFilter>('All')
 
   useEffect(() => {
     setTheme(getThemePreference())
@@ -186,15 +313,16 @@ export function AppearanceSettings({
     setFontWeightState(getUiFontWeight())
   }, [])
 
-  const scaleIndex = Math.max(0, UI_SCALES.indexOf(scale))
-  const fontWeightIndex = Math.max(0, UI_FONT_WEIGHTS.findIndex((w) => w.value === fontWeight))
-  const displayFonts = fontFilter === 'All' ? UI_FONTS : UI_FONTS.filter((f) => f.category === fontFilter)
-  const activeFont = UI_FONTS.find((f) => f.id === font) ?? UI_FONTS[0]
+  const displayFonts = fontFilter === 'All' ? UI_FONTS : UI_FONTS.filter((option) => option.category === fontFilter)
+  const activeFont = UI_FONTS.find((option) => option.id === font) ?? UI_FONTS[0]
+  const activeWeight = UI_FONT_WEIGHTS.find((option) => option.value === fontWeight)
+  const activeAccent = ACCENTS.find((option) => option.id === accent)
+  const activeTheme = THEME_OPTIONS.find((option) => option.value === theme)
 
   return (
-    <div className={cn('flex flex-col gap-6', className)}>
-      <Section label="Theme" hint="System follows your device. Your designs are never affected.">
-        <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="Color theme">
+    <div className={cn('flex flex-col gap-4 sm:gap-5', className)}>
+      <Section flat={flat} label="Theme" hint="System follows your device. Your designs are never affected." value={activeTheme?.label}>
+        <div className="grid grid-cols-3 gap-2 @sm:gap-3" role="radiogroup" aria-label="Color theme">
           {THEME_OPTIONS.map((option) => {
             const selected = theme === option.value
             return (
@@ -203,23 +331,20 @@ export function AppearanceSettings({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                className={cn(
-                  'cx-press group flex min-w-0 flex-col gap-2.5 rounded-xl p-2.5 text-start outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring',
-                  selected
-                    ? 'bg-surface text-foreground font-medium ring-2 ring-cx-accent shadow-[0_4px_14px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] scale-[1.02]'
-                    : 'bg-surface-2/60 text-muted-foreground border border-line/70 hover:border-line hover:text-foreground hover:shadow-xs active:scale-[0.98]',
-                )}
+                className="cx-tile flex min-w-0 flex-col gap-2 rounded-[14px] bg-surface p-1.5 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => {
                   setTheme(option.value)
                   setThemePreference(option.value)
                 }}
               >
-                <span className="block overflow-hidden rounded-lg border border-line/60 shadow-xs">
+                <span className="block overflow-hidden rounded-lg outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10">
                   <ThemeSpecimen mode={option.value} />
                 </span>
-                <span className="px-0.5 text-xs flex items-center justify-between">
-                  <span>{option.label}</span>
-                  {selected && <span className="size-1.5 rounded-full bg-cx-accent shadow-[0_0_6px_var(--cx-accent)]" />}
+                <span className="flex items-center justify-between gap-1 px-1 pb-0.5 text-xs">
+                  <span className={cn('truncate transition-colors duration-150', selected ? 'text-foreground' : 'text-muted-foreground')}>
+                    {option.label}
+                  </span>
+                  <Mark on={selected} />
                 </span>
               </button>
             )
@@ -227,8 +352,8 @@ export function AppearanceSettings({
         </div>
       </Section>
 
-      <Section label="Accent" hint="The one colour used for selection, focus and whatever is live.">
-        <div className="grid grid-cols-6 gap-2.5" role="radiogroup" aria-label="Accent colour">
+      <Section flat={flat} label="Accent" hint="The one colour spent on selection, focus and whatever is live." value={activeAccent?.label}>
+        <div className="grid grid-cols-6 gap-2 @sm:gap-2.5" role="radiogroup" aria-label="Accent colour">
           {ACCENTS.map((option) => {
             const selected = accent === option.id
             const vars = { '--sw-l': option.light, '--sw-d': option.dark } as CSSProperties
@@ -241,150 +366,24 @@ export function AppearanceSettings({
                 aria-label={option.label}
                 title={option.label}
                 style={vars}
-                className={cn(
-                  'cx-press group relative flex aspect-square min-w-0 items-center justify-center rounded-xl outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-ring',
-                  selected
-                    ? 'bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] ring-2 ring-cx-accent scale-105'
-                    : 'bg-surface-2/60 border border-line/70 hover:bg-surface hover:border-line active:scale-95',
-                )}
+                className="cx-tile group grid aspect-square min-w-0 place-items-center rounded-xl bg-surface outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => {
                   setAccentState(option.id)
                   setAccent(option.id)
                 }}
               >
-                <span
-                  className="size-5 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.4)] transition-transform duration-150 group-hover:scale-110"
-                  style={{ backgroundColor: 'var(--sw-l)' }}
-                />
-              </button>
-            )
-          })}
-        </div>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
-          Active: <span className="font-medium text-foreground">{ACCENTS.find((option) => option.id === accent)?.label}</span>
-        </p>
-      </Section>
-
-      <Section
-        label="UI Typography"
-        hint="Sets the master typeface and physical weight applied universally across all tools, panels, dialogs, and chrome."
-      >
-        {/* Live Typographic Specimen Stage */}
-        <div
-          className="relative overflow-hidden rounded-2xl border border-line/80 bg-gradient-to-b from-surface via-surface to-surface-2/60 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition-all duration-200"
-          style={{ fontFamily: activeFont.stack }}
-        >
-          <div className="flex items-center justify-between pb-3 border-b border-line/60">
-            <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-cx-accent shadow-[0_0_8px_var(--cx-accent)] animate-pulse" />
-              <span className="text-sm font-semibold tracking-tight text-foreground">
-                {activeFont.label}
-              </span>
-              <span className="rounded-md bg-well/80 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground border border-border/50">
-                {activeFont.category}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-medium text-foreground shadow-xs border border-line/60">
-                {fontWeight} · {UI_FONT_WEIGHTS.find((w) => w.value === fontWeight)?.label}
-              </span>
-            </div>
-          </div>
-
-          <div
-            className="my-3 text-3xl sm:text-4xl font-normal tracking-tight text-foreground select-none transition-all duration-200"
-            style={{ fontWeight }}
-          >
-            Aa Bb Gg 0123
-          </div>
-
-          <p
-            className="text-xs text-foreground/80 leading-relaxed max-w-xl transition-all duration-200"
-            style={{ fontWeight }}
-          >
-            The quick brown fox jumps over the lazy dog. Crafted interface typography for infinite canvas architecture.
-          </p>
-
-          <div className="mt-3 pt-3 border-t border-line/50 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground/70 tracking-widest uppercase select-none">
-            <span>A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</span>
-            <span className="font-mono text-[9px] tabular-nums">0 1 2 3 4 5 6 7 8 9</span>
-          </div>
-        </div>
-
-        {/* Category Filter Tabs */}
-        <div className="flex items-center gap-1 rounded-xl bg-well/90 p-1 ring-1 ring-border/50 shadow-inner" role="tablist" aria-label="Font categories">
-          {(['All', 'Sans Serif', 'Monospace', 'Display'] as const).map((cat) => {
-            const active = fontFilter === cat
-            const count = cat === 'All' ? UI_FONTS.length : UI_FONTS.filter((f) => f.category === cat).length
-            return (
-              <button
-                key={cat}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setFontFilter(cat)}
-                className={cn(
-                  'cx-press flex-1 rounded-lg py-1.5 px-3 text-xs text-center transition-all duration-150 outline-none',
-                  active
-                    ? 'bg-surface font-semibold text-foreground shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)] ring-1 ring-border/60'
-                    : 'text-muted-foreground hover:bg-surface/50 hover:text-foreground',
-                )}
-              >
-                <span>{cat}</span>
-                <span className="ml-1.5 opacity-60 font-mono text-[10px]">({count})</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Font Cards Grid */}
-        <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="UI Font family">
-          {displayFonts.map((option) => {
-            const selected = font === option.id
-            return (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                className={cn(
-                  'cx-press group relative flex flex-col justify-between rounded-xl p-3.5 text-start outline-none transition-all duration-150 ease-smooth focus-visible:ring-2 focus-visible:ring-ring',
-                  selected
-                    ? 'bg-surface text-foreground font-medium ring-2 ring-cx-accent shadow-[0_6px_20px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)] scale-[1.015]'
-                    : 'bg-surface-2/40 text-muted-foreground border border-line/70 hover:border-line hover:text-foreground hover:bg-surface hover:shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] active:scale-[0.985]',
-                )}
-                onClick={() => {
-                  setFontState(option.id)
-                  setUiFont(option.id)
-                }}
-              >
-                <div className="flex items-center justify-between gap-1 w-full pb-2 border-b border-line/40">
-                  <span className="text-xs font-semibold text-foreground truncate">
-                    {option.label}
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="rounded bg-well/80 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground border border-border/40">
-                      {option.category === 'Sans Serif' ? 'Sans' : option.category === 'Monospace' ? 'Mono' : 'Display'}
-                    </span>
-                    {selected && (
-                      <span className="size-2 rounded-full bg-cx-accent shadow-[0_0_8px_var(--cx-accent)]" />
+                <span className="grid size-[44%] place-items-center rounded-full bg-(--sw-l) text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_1px_2px_rgba(0,0,0,0.2)] transition-[scale] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-aria-checked:scale-110 dark:bg-(--sw-d)">
+                  <svg
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                    className={cn(
+                      'size-[55%] transition-[opacity,scale,filter] duration-200 ease-[cubic-bezier(0.2,0,0,1)]',
+                      selected ? 'scale-100 opacity-100 blur-[0px]' : 'scale-[0.25] opacity-0 blur-[4px]',
                     )}
-                  </div>
-                </div>
-
-                <div
-                  className="my-2.5 text-xl font-normal text-foreground/90 tracking-tight select-none truncate"
-                  style={{ fontFamily: option.stack }}
-                >
-                  Aa Bb Gg 123
-                </div>
-
-                <div
-                  className="text-[11px] text-muted-foreground truncate leading-relaxed"
-                  style={{ fontFamily: option.stack }}
-                >
-                  {option.previewText ?? 'Clean typography'}
-                </div>
+                  >
+                    <path d="M4 8.5 6.8 11 12 5.5" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
               </button>
             )
           })}
@@ -392,118 +391,139 @@ export function AppearanceSettings({
       </Section>
 
       <Section
-        label="Master Font Weight"
-        hint="Calibrates the typographic weight across all UI typography, panels, buttons, menus, and inspector fields."
+        flat={flat}
+        label="Typeface"
+        hint="Every panel, menu and label in Sheet. Your designs keep their own fonts."
+        value={activeFont.label}
       >
-        <div
-          className="relative grid grid-cols-5 rounded-2xl bg-well/90 p-1 ring-1 ring-border/50 shadow-inner"
-          role="radiogroup"
-          aria-label="Master Font weight"
-        >
-          {/* One marker that slides between stops */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 start-0 w-1/5 p-1 transition-transform duration-200 ease-smooth motion-reduce:transition-none"
-            style={{ transform: `translateX(${fontWeightIndex * 100}%)` }}
+        {/* The specimen: the pick, at the weight, before you read another word of the app in it. */}
+        <div className={cn('overflow-hidden', WELL)}>
+          <div
+            key={`${font}:${fontWeight}`}
+            className="cx-swap flex items-end gap-4 px-4 pb-4 pt-5 @sm:gap-5 @sm:px-5"
+            style={{ fontFamily: activeFont.stack, fontWeight }}
           >
-            <span className="block size-full rounded-xl bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50" />
-          </span>
-          {UI_FONT_WEIGHTS.map((option) => {
-            const selected = fontWeight === option.value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                className={cn(
-                  'relative z-10 flex h-14 flex-col items-center justify-center gap-1 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring',
-                  selected ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground',
-                )}
-                onClick={() => {
-                  setFontWeightState(option.value)
-                  setUiFontWeight(option.value)
-                }}
-              >
-                <span
-                  aria-hidden="true"
-                  className="leading-none text-base transition-all"
-                  style={{ fontWeight: option.value }}
-                >
+            <span aria-hidden="true" className="text-[52px] leading-[0.78] tracking-tight text-foreground select-none @sm:text-[68px]">
+              Aa
+            </span>
+            <span className="min-w-0 pb-0.5">
+              <span className="block text-sm leading-snug text-pretty text-foreground">
+                Frames, layers, and the quiet labels between them.
+              </span>
+              <span className="mt-1.5 block truncate text-[11px] tabular-nums text-muted-foreground">
+                {activeFont.category} · {activeWeight?.label} {fontWeight}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <Segmented
+          label="Font weight"
+          value={fontWeight}
+          options={UI_FONT_WEIGHTS.map((option) => ({
+            value: option.value,
+            name: `${option.label} ${option.value}`,
+            content: (
+              <>
+                <span aria-hidden="true" className="text-[15px] leading-none" style={{ fontWeight: option.value }}>
                   Aa
                 </span>
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] font-medium leading-none">{option.label}</span>
-                  <span className="font-mono text-[9px] tabular-nums text-muted-foreground opacity-75">
-                    {option.value}
-                  </span>
-                </div>
-              </button>
-            )
-          })}
-        </div>
+                <span className="max-w-full truncate text-[10px] leading-none tabular-nums">{option.value}</span>
+              </>
+            ),
+          }))}
+          onChange={(next) => {
+            setFontWeightState(next)
+            setUiFontWeight(next)
+          }}
+        />
 
-        {/* Live Weight Hierarchy Strip */}
-        <div className="mt-2 grid grid-cols-4 gap-2 pt-2 border-t border-line/60">
-          <div className="flex flex-col gap-0.5 rounded-lg bg-surface-2/40 p-2 border border-line/50">
-            <span className="text-[10px] uppercase font-mono text-muted-foreground">Normal</span>
-            <span className="text-xs text-foreground font-normal truncate">Body & Labels</span>
-          </div>
-          <div className="flex flex-col gap-0.5 rounded-lg bg-surface-2/40 p-2 border border-line/50">
-            <span className="text-[10px] uppercase font-mono text-muted-foreground">Medium</span>
-            <span className="text-xs text-foreground font-medium truncate">Controls & Tabs</span>
-          </div>
-          <div className="flex flex-col gap-0.5 rounded-lg bg-surface-2/40 p-2 border border-line/50">
-            <span className="text-[10px] uppercase font-mono text-muted-foreground">SemiBold</span>
-            <span className="text-xs text-foreground font-semibold truncate">Actions & Pills</span>
-          </div>
-          <div className="flex flex-col gap-0.5 rounded-lg bg-surface-2/40 p-2 border border-line/50">
-            <span className="text-[10px] uppercase font-mono text-muted-foreground">Bold</span>
-            <span className="text-xs text-foreground font-bold truncate">Headings & Titles</span>
+        <div className="mt-1 flex flex-col gap-2.5">
+          <Segmented
+            label="Font category"
+            value={fontFilter}
+            options={FONT_FILTERS.map((option) => ({
+              value: option.value,
+              content: (
+                <span className="flex items-baseline gap-1.5">
+                  <span>{option.label}</span>
+                  <span className="text-[10px] tabular-nums opacity-50">
+                    {option.value === 'All' ? UI_FONTS.length : UI_FONTS.filter((entry) => entry.category === option.value).length}
+                  </span>
+                </span>
+              ),
+            }))}
+            onChange={setFontFilter}
+          />
+
+          {/* Re-keyed per category so the list arrives one card at a time. */}
+          <div key={fontFilter} className="cx-stagger grid grid-cols-1 gap-2 @md:grid-cols-2" role="radiogroup" aria-label="Typeface">
+            {displayFonts.map((option, index) => {
+              const selected = font === option.id
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  style={{ '--i': index } as CSSProperties}
+                  className="cx-tile flex min-h-14 min-w-0 items-center gap-3 rounded-[14px] bg-surface py-2 ps-2 pe-3 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    setFontState(option.id)
+                    setUiFont(option.id)
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="grid size-10 shrink-0 place-items-center rounded-lg bg-well/80 text-[17px] text-foreground"
+                    style={{ fontFamily: option.stack }}
+                  >
+                    Aa
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] leading-tight text-foreground" style={{ fontFamily: option.stack }}>
+                      {option.label}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                      {option.id === DEFAULT_UI_FONT ? 'Default · ' : ''}
+                      {option.previewText ?? option.category}
+                    </span>
+                  </span>
+                  <Mark on={selected} />
+                </button>
+              )
+            })}
           </div>
         </div>
       </Section>
 
       {showScale ? (
         <Section
+          flat={flat}
           label="Interface size"
-          hint="Scales menus, panels, and text. Designs keep their own size; use canvas zoom for those."
+          hint="Scales menus, panels and text. Designs keep their own size; use canvas zoom for those."
+          value={SCALE_LABELS[scale]}
         >
-          <div className="relative grid grid-cols-5 rounded-2xl bg-well/90 p-1 ring-1 ring-border/50 shadow-inner" role="radiogroup" aria-label="Interface size">
-            {/* One marker that slides between stops */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 start-0 w-1/5 p-1 transition-transform duration-200 ease-smooth motion-reduce:transition-none"
-              style={{ transform: `translateX(${scaleIndex * 100}%)` }}
-            >
-              <span className="block size-full rounded-xl bg-surface shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-border/50" />
-            </span>
-            {UI_SCALES.map((option) => {
-              const selected = scale === option
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  className={cn(
-                    'relative z-10 flex h-14 flex-col items-center justify-center gap-1 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring',
-                    selected ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  onClick={() => {
-                    setScale(option)
-                    setUiScale(option)
-                  }}
-                >
-                  <span aria-hidden="true" className="leading-none font-medium" style={{ fontSize: `${Math.round(option * 11)}px` }}>
+          <Segmented
+            label="Interface size"
+            value={scale}
+            options={UI_SCALES.map((option) => ({
+              value: option,
+              name: `${SCALE_LABELS[option]}, ${Math.round(option * 100)} percent`,
+              content: (
+                <>
+                  <span aria-hidden="true" className="leading-none" style={{ fontSize: `${Math.round(option * 12)}px` }}>
                     Aa
                   </span>
-                  <span className="font-mono text-[10px] tabular-nums text-inherit">{Math.round(option * 100)}%</span>
-                  <span className="sr-only">{SCALE_LABELS[option]}</span>
-                </button>
-              )
-            })}
-          </div>
+                  <span className="text-[10px] leading-none tabular-nums">{Math.round(option * 100)}%</span>
+                </>
+              ),
+            }))}
+            onChange={(next) => {
+              setScale(next)
+              setUiScale(next)
+            }}
+          />
         </Section>
       ) : null}
     </div>
@@ -511,7 +531,7 @@ export function AppearanceSettings({
 }
 
 /** Sound on or off, and how loud, as five bars you can press. */
-export function SoundSettings({ className }: { className?: string }) {
+export function SoundSettings({ className, flat = false }: { className?: string; flat?: boolean }) {
   const [sound, setSound] = useState<SoundPreference>(DEFAULT_SOUND)
   const [volume, setVolume] = useState<VolumeLevel>(DEFAULT_VOLUME)
 
@@ -521,8 +541,8 @@ export function SoundSettings({ className }: { className?: string }) {
   }, [])
 
   return (
-    <div className={cn('flex flex-col gap-6', className)}>
-      <Section label="Sound" hint="Cues for taps, hovers, menus and finished work.">
+    <div className={cn('flex flex-col gap-4 sm:gap-5', className)}>
+      <Section flat={flat} label="Sound" hint="Cues for taps, hovers, menus and finished work.">
         <SwitchRow
           label="Sound"
           checked={sound === 'on'}
@@ -534,9 +554,14 @@ export function SoundSettings({ className }: { className?: string }) {
         />
       </Section>
 
-      <Section label="Volume" hint="Press a bar. The sound you hear is the level you chose.">
+      <Section
+        flat={flat}
+        label="Volume"
+        hint="Press a bar. The sound you hear is the level you chose."
+        value={`${Math.round(volume * 100)}%`}
+      >
         <div
-          className={cn('flex h-14 items-end gap-2.5 rounded-xl bg-well/70 p-2.5 ring-1 ring-border/40 shadow-inner transition-opacity duration-200', sound === 'off' && 'opacity-40')}
+          className={cn('flex h-16 items-end gap-2 p-2.5 transition-opacity duration-200', WELL, sound === 'off' && 'opacity-40')}
           role="radiogroup"
           aria-label="Volume"
         >
@@ -550,18 +575,18 @@ export function SoundSettings({ className }: { className?: string }) {
                 aria-checked={volume === level}
                 aria-label={`Volume ${Math.round(level * 100)} percent`}
                 disabled={sound === 'off'}
-                className="cx-press flex h-full flex-1 items-end outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+                className="cx-press group flex h-full flex-1 items-end outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
                 onClick={() => {
                   setVolume(level)
                   setVolumePreference(level)
                 }}
               >
-                <div
+                <span
                   className={cn(
-                    'w-full rounded-md transition-all duration-200',
+                    'block w-full rounded-md transition-[background-color,box-shadow] duration-200',
                     reached
                       ? 'bg-cx-accent shadow-[0_1px_3px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.3)]'
-                      : 'bg-muted-foreground/25 hover:bg-muted-foreground/40',
+                      : 'bg-muted-foreground/25 group-hover:bg-muted-foreground/40',
                   )}
                   style={{ height: `${28 + index * 18}%` }}
                 />
@@ -569,9 +594,6 @@ export function SoundSettings({ className }: { className?: string }) {
             )
           })}
         </div>
-        <p className="font-mono text-xs text-muted-foreground tabular-nums">
-          Volume: <span className="font-medium text-foreground">{Math.round(volume * 100)}%</span>
-        </p>
       </Section>
     </div>
   )

@@ -238,7 +238,7 @@ export function CommentThread({
           </p>
         ) : null}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-2xs text-muted-foreground">↵ to send · ⇧↵ new line</span>
+          <span className="text-2xs text-muted-foreground">Enter to send · Shift+Enter for a new line</span>
           <Button size="sm" disabled={!draft.trim() || saving} loading={saving} onClick={() => void submit()}>
             Comment
           </Button>

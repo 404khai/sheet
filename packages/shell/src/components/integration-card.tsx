@@ -19,7 +19,7 @@ export function IntegrationCard({
     <section className={cn('flex flex-col gap-3', className)}>
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="cx-label cx-bracket">{title}</h3>
+          <h3 className="text-[13px] font-semibold tracking-tight text-foreground">{title}</h3>
           {status}
         </div>
         {description ? (

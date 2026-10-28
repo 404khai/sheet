@@ -1,6 +1,6 @@
 [package]
 name = "Sheet"
-version = "1.1.0"
+version = "1.1.1"
 description = "Sheet"
 authors = ["Sheet"]
 edition = "2021"

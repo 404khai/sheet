@@ -286,16 +286,13 @@ export function ConnectAgent({ className }: { className?: string }) {
     <div className={cn('flex min-w-0 flex-col gap-5', className)}>
       {/* Live endpoint */}
       <div
-        className="flex min-w-0 items-center gap-3 rounded-2xl border border-line/80 bg-surface/80 px-3.5 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm"
-        style={{ backgroundImage: 'radial-gradient(120% 140% at 0% 0%, color-mix(in oklab, var(--cx-accent) 14%, transparent), transparent 60%)' }}
+        className="flex min-w-0 items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-lift"
       >
-        <span className="relative grid size-2 shrink-0 place-items-center" aria-hidden="true">
-          <span className="absolute inline-flex size-2 animate-ping rounded-full bg-success opacity-60" />
-          <span className="relative inline-flex size-2 rounded-full bg-success" />
-        </span>
+        {/* Live: a steady dot with one soft halo, not a strobing ping. */}
+        <span className="cx-live size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Local MCP endpoint</div>
-          <div className="truncate font-mono text-xs text-foreground font-semibold">{MCP_URL}</div>
+          <div className="text-[11px] text-muted-foreground">Local MCP endpoint</div>
+          <div className="mt-0.5 truncate font-mono text-xs font-medium text-foreground">{MCP_URL}</div>
         </div>
         <CopyButton text={MCP_URL} label="Copy endpoint" />
       </div>
@@ -312,11 +309,11 @@ export function ConnectAgent({ className }: { className?: string }) {
               role="tab"
               aria-selected={active}
               onClick={() => setSelected(entry.key)}
+              // `aria-checked` drives the tile's chosen ring (`cx-tile`); `aria-selected` keeps tab semantics.
+              aria-checked={active}
               className={cn(
-                'flex min-w-0 flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-[11px] transition-all duration-150 active:scale-[0.97]',
-                active
-                  ? 'border-cx-accent bg-surface font-medium text-foreground shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-cx-accent/60 scale-[1.02]'
-                  : 'border-line/70 bg-surface-2/40 text-muted-foreground hover:border-line hover:bg-surface hover:text-foreground hover:shadow-xs',
+                'cx-tile flex min-w-0 flex-col items-center gap-1.5 rounded-xl bg-surface px-2 py-3 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <Icon className="size-5" />
@@ -340,13 +337,13 @@ export function ConnectAgent({ className }: { className?: string }) {
               key={prompt}
               type="button"
               onClick={() => void copy(prompt)}
-              className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-line/70 bg-surface-2/30 px-3.5 py-2.5 text-start text-xs text-muted-foreground transition-all duration-150 hover:border-line hover:bg-surface hover:text-foreground hover:shadow-xs active:scale-[0.99]"
+              className="group flex min-w-0 items-center gap-2.5 rounded-xl bg-surface px-3.5 py-2.5 text-start text-xs text-muted-foreground shadow-raised outline-none transition-[box-shadow,color,scale] duration-150 ease-smooth hover:text-foreground hover:shadow-raised-hover active:scale-[0.985] active:shadow-pressed focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span className="min-w-0 flex-1 truncate">{prompt}</span>
               {copied === prompt ? (
-                <span className="shrink-0 text-[11px] font-medium text-success-foreground">Copied</span>
+                <span key="copied" className="cx-swap shrink-0 text-[11px] font-medium text-success-foreground">Copied</span>
               ) : (
-                <CopyIcon className="size-3.5 shrink-0 opacity-50 group-hover:opacity-100" />
+                <CopyIcon className="size-3.5 shrink-0 opacity-50 transition-opacity group-hover:opacity-100" />
               )}
             </button>
           ))}

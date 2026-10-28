@@ -53,28 +53,45 @@ export function UpdatesSettings({ className }: { className?: string }) {
   const available = phase.name === 'done' && phase.result.status === 'available' ? phase.result : null
 
   return (
-    <div className={cn('flex flex-col gap-6', className)}>
-      <Section label="Version" hint="Updates are signed and checked against a key built into Sheet before they install.">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded-lg bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] border border-line/70 text-foreground tabular-nums">
-            v{version ?? '—'}
-          </span>
+    <div className={cn('flex flex-col gap-4 sm:gap-5', className)}>
+      <Section
+        label="Version"
+        hint="Updates are signed and checked against a key built into Sheet before they install."
+        value={version ? `v${version}` : undefined}
+      >
+        <div className="flex items-center gap-2.5 rounded-xl bg-well px-3 py-2.5 shadow-sunken">
+          <span
+            aria-hidden="true"
+            className={cn(
+              'size-1.5 shrink-0 rounded-full transition-colors duration-200',
+              phase.name === 'checking'
+                ? 'animate-pulse bg-muted-foreground'
+                : phase.name === 'done' && phase.result.status === 'error'
+                  ? 'bg-destructive'
+                  : available
+                    ? 'bg-cx-accent'
+                    : phase.name === 'done'
+                      ? 'bg-success'
+                      : 'bg-muted-foreground/40',
+            )}
+          />
           <p
             role="status"
+            key={statusLine(phase)}
             className={cn(
-              'text-xs',
-              phase.name === 'done' && phase.result.status === 'error' ? 'text-destructive-foreground' : 'text-muted-foreground',
+              'cx-swap min-w-0 text-xs text-pretty',
+              phase.name === 'done' && phase.result.status === 'error' ? 'text-destructive-foreground' : 'text-foreground',
             )}
           >
             {statusLine(phase)}
           </p>
         </div>
         {available?.notes ? (
-          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground rounded-xl border border-line/70 bg-surface-2/40 p-3 shadow-inner">
+          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-well/60 p-3 text-xs leading-relaxed text-muted-foreground shadow-sunken">
             {available.notes}
           </p>
         ) : null}
-        <div className="flex gap-2 pt-1">
+        <div className="flex gap-2">
           {available ? (
             <Button type="button" onClick={() => void installWithToasts(available.version)}>
               Install and restart

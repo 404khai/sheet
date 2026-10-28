@@ -37,7 +37,7 @@ export function DialogBackdrop({
   return (
     <DialogPrimitive.Backdrop
       className={cn(
-        "fixed inset-0 z-50 bg-black/28 transition-opacity duration-160 data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-black/24 backdrop-blur-[2px] transition-[opacity,backdrop-filter] duration-200 data-ending-style:backdrop-blur-none data-starting-style:backdrop-blur-none data-ending-style:opacity-0 data-starting-style:opacity-0",
         className,
       )}
       data-slot="dialog-backdrop"

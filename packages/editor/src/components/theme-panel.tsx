@@ -92,7 +92,7 @@ function TokenEditor({
   }
 
   return (
-    <div className="mx-2 mb-1 flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-2.5">
+    <div className="app-page-enter mx-2 mb-1 flex flex-col gap-2 rounded-xl bg-well/60 p-2.5 shadow-sunken">
       {token.group === 'Color' ? (
         <input
           type="color"
@@ -197,7 +197,7 @@ export function ThemePanel({ document, transact }: { document: WebDocument; tran
                 key={group}
                 type="button"
                 onClick={() => addToken(group)}
-                className="rounded-lg border border-line bg-surface-2 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-secondary"
+                className="rounded-lg bg-surface px-2.5 py-1 text-xs text-foreground shadow-raised outline-none transition-[box-shadow,scale] duration-150 ease-smooth hover:shadow-raised-hover active:scale-[0.96] active:shadow-pressed focus-visible:ring-2 focus-visible:ring-ring"
               >
                 + {group}
               </button>

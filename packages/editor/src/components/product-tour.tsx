@@ -441,7 +441,7 @@ export function ProductTour({
           </a>
         ) : null}
         {step.copy ? (
-          <div className="mt-2 flex items-center gap-1 rounded-md border border-line bg-surface-2 ps-2">
+          <div className="mt-2 flex items-center gap-1 rounded-lg bg-well/60 ps-2 shadow-sunken">
             <code className="min-w-0 flex-1 truncate font-mono text-2xs text-muted-foreground">
               {step.copy.value}
             </code>

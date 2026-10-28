@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { orpc } from '@sheet/rpc/client'
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from '@sheet/ui/menu'
-import { ChevronDownIcon, CodeXmlIcon, DownloadIcon, ImageIcon } from '@sheet/ui/icons'
+import { CodeXmlIcon, DownloadIcon, ImageIcon } from '@sheet/ui/icons'
 import { copyText } from '../lib/copy-text'
 
 type Format = 'png' | 'jpg' | 'html' | 'json'
@@ -65,11 +65,10 @@ export function ExportMenu({
         aria-label="Export design"
         title="Export design"
         disabled={busy !== null}
-        className="flex h-[24px] shrink-0 items-center gap-1.5 rounded-md bg-surface px-2 text-xs text-foreground shadow-lift outline-none transition-[box-shadow,transform] duration-150 ease-smooth hover:shadow-lift-hover focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:opacity-60"
+        className="grid size-7 shrink-0 place-items-center rounded-md bg-surface text-foreground shadow-raised outline-none transition-[background-color,color,box-shadow,scale] duration-150 ease-smooth hover:bg-surface/80 hover:shadow-raised-hover focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.92] disabled:opacity-50 disabled:shadow-none"
       >
         <DownloadIcon className="size-3.5 text-muted-foreground" />
-        <span className="max-md:sr-only">{busy ? 'Exporting…' : 'Export'}</span>
-        <ChevronDownIcon className="size-3 text-muted-foreground" />
+        <span className="sr-only">{busy ? 'Exporting…' : 'Export'}</span>
       </MenuTrigger>
       <MenuPopup align="start">
         <MenuGroup>
