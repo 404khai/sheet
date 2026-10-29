@@ -19,7 +19,8 @@
     "./web-icon-style": "./src/web-icon-style.ts",
     "./web-shaders": "./src/web-shaders.ts",
     "./web-pages": "./src/web-pages.ts",
-    "./web-frames": "./src/web-frames.ts"
+    "./web-frames": "./src/web-frames.ts",
+    "./browser-capture": "./src/browser-capture.ts"
   },
   "scripts": {
     "embed-preflight": "bun run scripts/embed-tailwind-preflight.ts"

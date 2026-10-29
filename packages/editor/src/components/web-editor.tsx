@@ -110,6 +110,8 @@ import { Sound } from '@sheet/ui/sound'
 import { useDesignComments } from '../lib/use-comments'
 import { CommentPin, CommentThread, CommentsList } from './comments'
 import { ExportMenu } from './export-menu'
+import { BrowserCaptureImport } from './browser-capture-import'
+import { browserCaptureTransaction } from '@sheet/canvas/browser-capture'
 import { CopyImageButton } from './copy-image-button'
 import { captureImage } from '../lib/capture-client'
 import { copyImage } from '../lib/copy-image'
@@ -3798,6 +3800,13 @@ export function WebCanvasEditor({
         onCopy={copySelectionImage}
         onError={setNotice}
       />
+      <BrowserCaptureImport onImport={(input) => {
+        const imported = browserCaptureTransaction(documentRef.current, input, canvasParentId(pageId))
+        if (!saveTransaction(imported.transaction)) throw new Error('Capture could not be inserted. Nothing was changed.')
+        setSelectedId(imported.rootId)
+        if (imported.warnings.length) setNotice(imported.warnings.join(' '))
+        requestAnimationFrame(() => fitToView())
+      }} />
       <ExportMenu designId={designId} draftId={draftId} onError={setNotice} />
     </>
   )

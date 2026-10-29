@@ -31,6 +31,14 @@ the app shows ready-made snippets.
 
 Windows users: see [windows/README.md](./windows/README.md) for quick setup, PowerShell scripts (`setup.ps1`, `run.ps1`, `build.ps1`), and development workflows.
 
+## Capture a website
+
+Use the [Sheet Browser Capture extension](./extensions/browser-capture/README.md)
+to select a visible section of a website, including localhost, then choose
+**Import capture** in the editor. Text, boxes, and computed styles become editable
+layers; images and unsupported visuals are embedded pictures. Captures stay local.
+Build the unpacked Chromium extension with `bun run build:browser-capture`.
+
 ## Design guide skill
 
 Teaches an agent to use the canvas tools well. Add `-g` to install globally.

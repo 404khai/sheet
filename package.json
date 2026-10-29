@@ -27,7 +27,8 @@
     "db:migrate": "bun run --cwd packages/db migrate",
     "db:studio": "bun run --cwd packages/db studio",
     "assets:backfill-urls": "bun run --cwd packages/rpc backfill-asset-urls",
-    "mcp:tools": "bun run --cwd packages/rpc dump-mcp-tools"
+    "mcp:tools": "bun run --cwd packages/rpc dump-mcp-tools",
+    "build:browser-capture": "bun run extensions/browser-capture/build.ts"
   },
   "trustedDependencies": [
     "esbuild",

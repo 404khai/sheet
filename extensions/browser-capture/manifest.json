@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "Sheet Browser Capture",
+  "version": "1.0.0",
+  "description": "Select a visible website section and save editable layers for Sheet.",
+  "permissions": ["activeTab", "scripting"],
+  "action": { "default_title": "Capture a section for Sheet" },
+  "background": { "service_worker": "background.js" }
+}
