@@ -8,6 +8,43 @@
   src: url(/fonts/paper-mono.woff2) format('woff2');
 }
 
+/* Poppins for reading, Paper Mono for labels and code. */
+:root {
+  --site-font-text: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --site-font-mono: 'Paper Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Black and white only: the accent is the ink itself. */
+  --cx-accent: #0d0d0d;
+  --cx-accent-foreground: #fff;
+}
+
+/* Pitch black. The shared tokens stay as they are for the desktop app. */
+.dark {
+  --cx-accent: #fff;
+  --cx-accent-foreground: #000;
+  --cx-canvas: #000;
+  --cx-dot: #1a1a1a;
+  --background: #000;
+  --card: #050505;
+  --popover: #0a0a0a;
+  --secondary: #0d0d0d;
+  --muted-foreground: #98988f;
+  --border: #1f1f1f;
+  --input: #2e2e2e;
+  --sidebar: #000;
+  --sidebar-border: #1a1a1a;
+  --well: #000;
+  --surface: #050505;
+  --surface-2: #0a0a0a;
+  --frame: #0a0a0a;
+  --line: #1c1c1c;
+  --edge: rgba(255, 255, 255, 0.1);
+  --panel-shadow:
+    0 0 0 1px var(--edge),
+    0 1px 2px rgba(0, 0, 0, 0.8),
+    0 3px 8px -1px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 var(--highlight);
+}
+
 *,
 *::before,
 *::after {
@@ -25,7 +62,26 @@ body {
   overflow-x: hidden;
   background: var(--background);
   color: var(--foreground);
-  font: 400 0.875rem/1.65 var(--sheet-font-sans);
+  font: 400 0.9375rem/1.65 var(--site-font-text);
+}
+
+.kicker,
+.note,
+.button,
+.nav nav,
+.nav-menu-button,
+.brand,
+.footer,
+.calls,
+.platform-tabs,
+.frame-label,
+.panel-title {
+  font-family: var(--site-font-mono);
+}
+
+.button,
+.nav nav {
+  font-size: 0.8125rem;
 }
 
 h1,
@@ -55,7 +111,7 @@ a {
 
 ::selection {
   background: var(--cx-accent);
-  color: #fff;
+  color: var(--cx-accent-foreground);
 }
 
 :focus-visible {
@@ -111,6 +167,44 @@ main > section,
   color: var(--muted-foreground);
 }
 
+.nav-menu-button {
+  display: none;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.nav-menu-button svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.nav-menu-button .menu-bar {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 200ms ease;
+}
+
+.nav-menu-button[aria-expanded='true'] .menu-top {
+  transform: translateY(3px) rotate(45deg);
+}
+
+.nav-menu-button[aria-expanded='true'] .menu-mid {
+  opacity: 0;
+}
+
+.nav-menu-button[aria-expanded='true'] .menu-bottom {
+  transform: translateY(-3px) rotate(-45deg);
+}
+
 .nav nav a:not(.button):hover {
   color: var(--foreground);
 }
@@ -132,7 +226,7 @@ main > section,
   line-height: 1;
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background: var(--frame);
 }
 
@@ -149,7 +243,7 @@ main > section,
 }
 
 .gh-stars-particles {
-  color: #eab308;
+  color: var(--foreground);
 }
 
 .gh-stars-star {
@@ -247,9 +341,9 @@ main > section,
 
 .button-solid:hover,
 .nav nav a.button-solid:hover {
-  background: var(--cx-accent);
-  border-color: var(--cx-accent);
-  color: #fff;
+  background: color-mix(in srgb, var(--primary) 82%, var(--background));
+  border-color: transparent;
+  color: var(--primary-foreground);
 }
 
 .button-small {
@@ -286,7 +380,7 @@ h1 {
   font-size: clamp(2rem, 5.5vw, 3.75rem);
   font-weight: 500;
   line-height: 1.05;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.03em;
 }
 
 h1 span {
@@ -373,7 +467,7 @@ h1 .dim {
   align-items: center;
   gap: 0.4rem;
   padding: 0.3rem 0.65rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-size: 0.6875rem;
   white-space: nowrap;
   color: var(--muted-foreground);
@@ -434,7 +528,7 @@ h1 .dim {
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   white-space: nowrap;
 }
 
@@ -482,7 +576,7 @@ h1 .dim {
   place-items: center;
   width: 1.75rem;
   height: 1.75rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .demo-rail span[data-active='true'] {
@@ -523,7 +617,7 @@ h1 .dim {
 .demo-avatar[data-agent='true'] {
   border-color: var(--cx-accent);
   background: var(--cx-accent);
-  color: #fff;
+  color: var(--cx-accent-foreground);
   animation: pop 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -544,7 +638,7 @@ h1 .dim {
   margin-top: 0.75rem;
   padding: 0.375rem;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: var(--surface);
   text-align: center;
 }
@@ -578,7 +672,7 @@ h1 .dim {
   gap: 0.5rem;
   padding: 0.3rem 0.5rem;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   background: var(--surface);
   font-variant-numeric: tabular-nums;
 }
@@ -673,7 +767,7 @@ h1 .dim {
   padding: 0.05rem 0.4rem;
   border-radius: 3px 3px 0 3px;
   background: var(--cx-accent);
-  color: #fff;
+  color: var(--cx-accent-foreground);
   font-size: 0.625rem;
   font-weight: 500;
   line-height: 1.6;
@@ -899,7 +993,7 @@ h1 .dim {
   height: 16rem;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: rgba(21, 21, 21, 0.94);
   backdrop-filter: blur(12px);
   box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.3);
@@ -928,7 +1022,7 @@ h1 .dim {
   right: 0.625rem;
   padding: 0.125rem 0.5rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   background: transparent;
   font-size: 0.625rem;
   color: #8a8a84;
@@ -1355,7 +1449,7 @@ h1 .dim {
   margin-top: 0.875rem;
   padding: 0.125rem 0.5rem;
   background: var(--cx-accent);
-  color: #fff;
+  color: var(--cx-accent-foreground);
   font-size: 0.6875rem;
 }
 
@@ -1371,7 +1465,7 @@ h2 {
   font-size: clamp(1.5rem, 3.5vw, 2.25rem);
   font-weight: 500;
   line-height: 1.04;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
@@ -1398,7 +1492,7 @@ h2 {
   overflow: hidden;
 }
 
-/* A soft orange light follows the pointer across the card. */
+/* A soft light follows the pointer across the card. */
 .card::before {
   content: '';
   position: absolute;
@@ -1517,8 +1611,47 @@ h3 {
     grid-column: auto;
   }
 
-  .nav nav a:not(.button) {
+  .nav-menu-button {
+    display: grid;
+  }
+
+  .nav nav {
     display: none;
+    position: absolute;
+    inset: 3.5rem 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0.5rem 1.5rem 1.5rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--background);
+  }
+
+  .nav nav[data-open='true'] {
+    display: flex;
+  }
+
+  .nav nav > a:not(.button),
+  .nav nav > .theme-toggle {
+    display: flex;
+    align-items: center;
+    min-height: 3rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav nav > .theme-toggle {
+    width: 100%;
+    height: auto;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    font: inherit;
+  }
+
+  .nav nav > .button {
+    margin-top: 1rem;
+    height: 2.75rem;
   }
 
   .hero {
@@ -1561,6 +1694,21 @@ h3 {
   transition:
     color var(--duration-base) ease,
     border-color var(--duration-base) ease;
+}
+
+.theme-label {
+  display: none;
+}
+
+@media (max-width: 56rem) {
+  .theme-toggle {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .theme-label {
+    display: inline;
+  }
 }
 
 .theme-toggle:hover {
@@ -1903,7 +2051,7 @@ h3 {
 
 .platform-tabs button[aria-selected='true'] {
   background: var(--cx-accent);
-  color: #fff;
+  color: var(--cx-accent-foreground);
 }
 
 @media (max-width: 56rem) {
@@ -2094,4 +2242,50 @@ h3 {
     animation: none;
     transform: none;
   }
+}
+
+/* Rounded-md on every box. Circles, pills and the per-OS window frames keep their own shapes. */
+:root {
+  --radius-md: 0.375rem;
+}
+
+.button,
+.nav-menu-button,
+.theme-toggle,
+.gh-stars-count,
+.card,
+.diagram,
+.dialog,
+.code,
+.countdown-bar,
+.platform-tabs,
+.platform-tabs button,
+.demo-window,
+.demo-tab,
+.demo-file,
+.demo-field,
+.demo-layers li,
+.demo-pages li,
+.demo-rail span,
+.demo-zoom,
+.demo-export,
+.demo-frame,
+.nw-signin,
+.nw-plan,
+.nw-cta,
+.nw-badge,
+.frame,
+.plan,
+.frame-button,
+.layers li,
+.calls li,
+.file {
+  border-radius: var(--radius-md);
+}
+
+.demo-window,
+.dialog,
+.diagram,
+.card {
+  overflow: hidden;
 }

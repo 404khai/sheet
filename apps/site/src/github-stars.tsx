@@ -26,7 +26,7 @@ export function NavGithubStars() {
         <span className="gh-stars-count">
           <GithubStarsNumber className="gh-stars-number" />
           <GithubStarsParticles className="gh-stars-particles">
-            <GithubStarsIcon icon={Star} className="gh-stars-star" color="#eab308" />
+            <GithubStarsIcon icon={Star} className="gh-stars-star" color="currentColor" />
           </GithubStarsParticles>
         </span>
       </GithubStars>

@@ -62,6 +62,7 @@ function ThemeToggle() {
       }}
     >
       <SunMoon dark={dark} />
+      <span className="theme-label">{dark ? 'Light theme' : 'Dark theme'}</span>
     </button>
   )
 }
@@ -181,6 +182,8 @@ export function App() {
   /** The build being downloaded; null while the dialog is closed. */
   const [download, setDownload] = useState<DownloadTarget | null>(null)
   const target = downloadTarget(detected)
+  /** The nav links collapse into this menu on small screens. */
+  const [menuOpen, setMenuOpen] = useState(false)
   /** The platforms section offers whichever tab is open, so the two agree. */
   const shownTarget = downloadTarget(platform)
 
@@ -191,6 +194,15 @@ export function App() {
     setDownload(next)
   }
 
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
   return (
     <>
       <header className="nav">
@@ -199,7 +211,23 @@ export function App() {
             <Ticks />
             Sheet
           </a>
-          <nav>
+          <button
+            type="button"
+            className="nav-menu-button"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            aria-controls="site-nav"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <path className="menu-bar menu-top" d="M2 4.5h12" />
+              <path className="menu-bar menu-mid" d="M2 8h12" />
+              <path className="menu-bar menu-bottom" d="M2 11.5h12" />
+            </svg>
+          </button>
+          <nav id="site-nav" data-open={menuOpen} onClick={(event) => {
+            if (event.target instanceof Element && event.target.closest('a')) setMenuOpen(false)
+          }}>
             <a href="#features" data-cuelume-navigate>
               Features
             </a>
@@ -226,8 +254,8 @@ export function App() {
               <span className="dim">On your machine.</span>
             </h1>
             <p className="lede">
-              Sheet is an infinite canvas for real UI. Bring Claude, Codex or Cursor and watch them
-              build beside you, live, in the same file.
+              Sheet is a canvas for real UI. Connect Claude, Codex or Cursor over MCP and watch the
+              page take shape as they build it, in the file you have open.
             </p>
             <div className="actions">
               <a
@@ -243,7 +271,7 @@ export function App() {
                 View on GitHub
               </a>
             </div>
-            <p className="note">Open source. No account needed.</p>
+            <p className="note">Free and open source. No account. No cloud.</p>
           </div>
           <div className="stage">
             <HeroDemo platform={detected} />
@@ -255,8 +283,7 @@ export function App() {
             <p className="kicker">Bring your own agent</p>
             <h2>Any agent. One canvas.</h2>
             <p className="sub">
-              Pick an agent and follow its tool calls over MCP, straight into the document you have
-              open.
+              Pick an agent and watch its MCP tool calls land in the document you have open.
             </p>
           </Reveal>
           <Reveal delay={120}>
@@ -269,14 +296,14 @@ export function App() {
         <section id="features" className="section">
           <Reveal>
             <p className="kicker">Why Sheet</p>
-            <h2>Built for people who work with agents.</h2>
+            <h2>A design tool that expects an agent in the room.</h2>
           </Reveal>
           <div className="bento">
             <Card className="card-wide">
-              <h3>Agent-native</h3>
+              <h3>Your agent works in your file</h3>
               <p>
                 Claude, Codex, Cursor and opencode connect over MCP and edit the same document you
-                do, through typed transactions.
+                do. Every change is a typed transaction, so you can undo it like your own.
               </p>
               <ul className="calls" aria-label="Example agent tool calls">
                 <li>
@@ -294,14 +321,14 @@ export function App() {
               </ul>
             </Card>
             <Card>
-              <h3>Local-first</h3>
-              <p>Runs entirely on your machine. No account, no hosted service.</p>
+              <h3>Stays on your machine</h3>
+              <p>Your designs live in one file on your disk. No account, no hosted service.</p>
               <LocalFirstArt />
             </Card>
             <Card className="card-full">
-              <h3>One-way export</h3>
+              <h3>Export when you are done</h3>
               <p>
-                Download PNG, JPG or HTML, or copy the HTML. Exports never round-trip, so the canvas
+                Save PNG, JPG or HTML, or copy the HTML. Exports never flow back in, so the canvas
                 stays the source of truth.
               </p>
               <ExportArt />
@@ -313,7 +340,7 @@ export function App() {
           <Reveal>
             <p className="kicker">Cross-platform</p>
             <h2>One app. Every desktop.</h2>
-            <p className="sub">Sheet runs on macOS, Windows and Linux, with the same canvas on each.</p>
+            <p className="sub">The same canvas on macOS, Windows and Linux.</p>
           </Reveal>
           <Reveal delay={120}>
             <div className="platforms">
