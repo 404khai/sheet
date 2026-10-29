@@ -401,11 +401,105 @@ h1 .dim {
 }
 
 .lede {
-  max-width: 48ch;
+  max-width: 60ch;
   margin: 1.5rem auto 0;
-  font-size: 0.9375rem;
+  font-size: 1.1875rem;
   color: var(--muted-foreground);
   text-wrap: balance;
+}
+
+/* App-icon tiles for the agents Sheet works with */
+.agent-icon {
+  --tile-a: #f0845f;
+  --tile-b: #c8502b;
+  --tile-fg: #fff;
+  --tile-glow: rgba(217, 119, 87, 0.45);
+  position: relative;
+  display: inline-block;
+  margin-inline: 0.0625rem;
+  line-height: 0;
+  vertical-align: -0.15em;
+}
+
+.agent-icon[data-agent='codex'] {
+  --tile-a: #ffffff;
+  --tile-b: #d6d6d6;
+  --tile-fg: #111;
+  --tile-glow: rgba(255, 255, 255, 0.35);
+}
+
+.agent-icon[data-agent='cursor'] {
+  --tile-a: #3a3930;
+  --tile-b: #14130e;
+  --tile-fg: #f2f1ea;
+  --tile-glow: rgba(120, 118, 100, 0.4);
+}
+
+.agent-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.75em;
+  height: 1.75em;
+  overflow: hidden;
+  border-radius: 0.5em;
+  color: var(--tile-fg);
+  background: linear-gradient(160deg, var(--tile-a), var(--tile-b));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 6px 14px -4px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.3),
+    box-shadow 0.28s ease;
+}
+
+/* A soft sheen that sweeps across on hover */
+.agent-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+}
+
+.agent-tile svg {
+  position: relative;
+  width: 0.95em;
+  height: 0.95em;
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+.agent-icon:hover .agent-tile {
+  transform: translateY(-3px) scale(1.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 12px 24px -6px var(--tile-glow);
+}
+
+.agent-icon:hover .agent-tile::after {
+  transform: translateX(120%);
+}
+
+.agent-icon:hover .agent-tile svg {
+  transform: rotate(-6deg) scale(1.08);
+}
+
+.agent-icon:active .agent-tile {
+  transform: scale(0.94);
+  transition-duration: 0.1s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-tile,
+  .agent-tile::after,
+  .agent-tile svg {
+    transition: none;
+  }
 }
 
 .actions {

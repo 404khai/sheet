@@ -12,7 +12,7 @@ import { DownloadDialog } from './download-dialog'
 import { downloadLabel, downloadTarget, downloadUrl, REPO, type DownloadTarget } from './download'
 import { NavGithubStars } from './github-stars'
 import { HeroDemo } from './hero-demo'
-import { PlatformMark } from './marks'
+import { ClaudeMark, CodexMark, CursorMark, PlatformMark } from './marks'
 import { chooseTheme, currentTheme, followSystem } from './theme'
 import { WindowControls } from './window-controls'
 
@@ -254,8 +254,24 @@ export function App() {
               <span className="dim">On your machine.</span>
             </h1>
             <p className="lede">
-              Sheet is a canvas for real UI. Connect Claude, Codex or Cursor over MCP and watch the
-              page take shape as they build it, in the file you have open.
+              Sheet is a canvas for real UI. Connect{' '}
+              <span className="agent-icon" data-agent="claude" role="img" aria-label="Claude">
+                <span className="agent-tile">
+                  <ClaudeMark />
+                </span>
+              </span>{' '}
+              <span className="agent-icon" data-agent="codex" role="img" aria-label="Codex">
+                <span className="agent-tile">
+                  <CodexMark />
+                </span>
+              </span>{' '}
+              or{' '}
+              <span className="agent-icon" data-agent="cursor" role="img" aria-label="Cursor">
+                <span className="agent-tile">
+                  <CursorMark />
+                </span>
+              </span>{' '}
+              over MCP and watch the page take shape as they build it, in the file you have open.
             </p>
             <div className="actions">
               <a
