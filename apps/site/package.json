@@ -9,7 +9,9 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@animate-ui/react": "^2.4.1",
     "cuelume": "^0.2.4",
+    "motion": "^14.7.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

@@ -11,6 +11,7 @@ import {
 import { prefersReducedMotion, trackPointer, useInView } from './hooks'
 import { DownloadDialog } from './download-dialog'
 import { downloadLabel, downloadTarget, downloadUrl, REPO, type DownloadTarget } from './download'
+import { NavGithubStars } from './github-stars'
 import { PlatformMark } from './marks'
 import { chooseTheme, currentTheme, followSystem } from './theme'
 
@@ -303,9 +304,7 @@ export function App() {
             <a href="#features" data-cuelume-navigate>
               Features
             </a>
-            <a href={REPO} data-cuelume-navigate>
-              GitHub
-            </a>
+            <NavGithubStars />
             <ThemeToggle />
             <a
               className="button button-solid button-small"

@@ -115,6 +115,42 @@ main > section,
   color: var(--foreground);
 }
 
+.gh-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gh-stars-logo {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.gh-stars-count {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--frame);
+}
+
+.gh-stars-number {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-stars-particles {
+  color: #eab308;
+}
+
+.gh-stars-star {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+  stroke: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
