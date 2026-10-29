@@ -122,20 +122,28 @@ main > section,
 }
 
 .gh-stars-logo {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
 .gh-stars-count {
   display: flex;
   align-items: center;
+  line-height: 1;
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
   border-radius: 0.5rem;
   background: var(--frame);
 }
 
+.gh-stars-count > div {
+  display: flex;
+  align-items: center;
+}
+
 .gh-stars-number {
+  display: flex;
+  align-items: center;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -145,6 +153,7 @@ main > section,
 }
 
 .gh-stars-star {
+  display: block;
   width: 1.125rem;
   height: 1.125rem;
   fill: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
