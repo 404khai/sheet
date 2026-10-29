@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
-import { play } from 'cuelume'
 import {
   AgentsDiagram,
   ExportArt,
@@ -8,34 +7,17 @@ import {
   SunMoon,
   type Platform,
 } from './diagrams'
-import { prefersReducedMotion, trackPointer, useInView } from './hooks'
+import { trackPointer, useInView } from './hooks'
 import { DownloadDialog } from './download-dialog'
 import { downloadLabel, downloadTarget, downloadUrl, REPO, type DownloadTarget } from './download'
 import { NavGithubStars } from './github-stars'
+import { HeroDemo } from './hero-demo'
 import { PlatformMark } from './marks'
 import { chooseTheme, currentTheme, followSystem } from './theme'
+import { WindowControls } from './window-controls'
 
-/** One agent step: when it fires, what the log says. */
-const script = [
-  { at: 700, tool: 'createFrame', detail: 'Pricing · 1280 × 800' },
-  { at: 1700, tool: 'insertNodes', detail: 'heading, 3 plan cards' },
-  { at: 2800, tool: 'patchNodes', detail: 'accent on Pro' },
-  { at: 3800, tool: 'insertNodes', detail: 'button “Get started”' },
-  { at: 4800, tool: 'animateNodes', detail: 'fade-in-up · stagger 80ms' },
-] as const
-
-const FINISH_AT = 6200
-const LOOP_AT = 10000
-
-/** Where the agent cursor sits after each step, in percent of the canvas. */
-const cursorAt = [
-  { x: 6, y: 10 },
-  { x: 14, y: 12 },
-  { x: 47, y: 46 },
-  { x: 52, y: 74 },
-  { x: 78, y: 30 },
-  { x: 90, y: 90 },
-] as const
+/** The step at which the pricing page is finished. */
+const BUILT = 5
 
 function Ticks() {
   return (
@@ -89,40 +71,6 @@ function detectPlatform(): Platform {
   if (/Windows/.test(agent)) return 'Windows'
   if (/Linux|X11/.test(agent) && !/Android/.test(agent)) return 'Linux'
   return 'macOS'
-}
-
-function WindowControls({ platform }: { platform: Platform }) {
-  if (platform === 'macOS') {
-    return (
-      <span className="lights" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-      </span>
-    )
-  }
-  if (platform === 'Windows') {
-    return (
-      <span className="win-controls" aria-hidden="true">
-        <svg viewBox="0 0 12 12">
-          <path d="M1 6h10" />
-        </svg>
-        <svg viewBox="0 0 12 12">
-          <rect x="1.5" y="1.5" width="9" height="9" />
-        </svg>
-        <svg viewBox="0 0 12 12">
-          <path d="M1 1l10 10M11 1 1 11" />
-        </svg>
-      </span>
-    )
-  }
-  return (
-    <span className="linux-controls" aria-hidden="true">
-      <svg viewBox="0 0 12 12">
-        <path d="M3 3l6 6M9 3 3 9" />
-      </svg>
-    </span>
-  )
 }
 
 /** The app window, drawn with the frame of the platform it runs on. */
@@ -209,61 +157,12 @@ function Layers({ step }: { step: number }) {
   )
 }
 
-/** The agent designing a pricing page, on a loop. */
-function LiveDemo({ platform }: { platform: Platform }) {
-  const [step, setStep] = useState(0)
-  const [run, setRun] = useState(0)
-
-  useEffect(() => {
-    if (prefersReducedMotion()) {
-      setStep(script.length)
-      return
-    }
-    setStep(0)
-    const timers = script.map((entry, index) => setTimeout(() => setStep(index + 1), entry.at))
-    timers.push(setTimeout(() => play('success', { emphasis: 'subtle' }), FINISH_AT))
-    timers.push(setTimeout(() => setRun((value) => value + 1), LOOP_AT))
-    return () => timers.forEach(clearTimeout)
-  }, [run])
-
-  const cursor = cursorAt[step] ?? cursorAt[0]
-
-  return (
-    <AppWindow platform={platform} title="Sheet — Pricing" columns={3}>
-      <aside className="panel panel-left" aria-label="Agent activity">
-        <p className="panel-title">Agent</p>
-        <p className="prompt">
-          Build a pricing page with three plans.<span className="caret" aria-hidden="true" />
-        </p>
-        <ul className="log">
-          {script.map((entry, index) => (
-            <li key={entry.tool + index} data-shown={step > index} data-live={step === index + 1}>
-              <span>{entry.tool}</span>
-              <em>{entry.detail}</em>
-            </li>
-          ))}
-        </ul>
-        <button
-          type="button"
-          className="replay"
-          data-cuelume-tap
-          onClick={() => setRun((value) => value + 1)}
-        >
-          Replay
-        </button>
-      </aside>
-      <PricingCanvas step={step} cursor={cursor} />
-      <Layers step={step} />
-    </AppWindow>
-  )
-}
-
 /** The finished design in the window of the chosen platform. */
 function PlatformWindow({ platform }: { platform: Platform }) {
   return (
     <AppWindow platform={platform} title="Sheet — Pricing" columns={2}>
-      <Layers step={script.length} />
-      <PricingCanvas step={script.length} cursor={cursorAt[5]} />
+      <Layers step={BUILT} />
+      <PricingCanvas step={BUILT} cursor={{ x: 90, y: 90 }} />
     </AppWindow>
   )
 }
@@ -347,7 +246,7 @@ export function App() {
             <p className="note">Open source. No account needed.</p>
           </div>
           <div className="stage">
-            <LiveDemo platform={detected} />
+            <HeroDemo platform={detected} />
           </div>
         </section>
 
