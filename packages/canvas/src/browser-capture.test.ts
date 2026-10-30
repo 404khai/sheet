@@ -98,6 +98,34 @@ describe('live browser snapshot', () => {
     expect(() => browserCaptureTransaction(createWebDocument('Design'), result, null)).not.toThrow()
   })
 
+  it('keeps visible children of hidden or empty boxes and drops hidden leaves', async () => {
+    const root = fixture('<div style="visibility:hidden"><p>Gone</p><p style="visibility:visible">Shown</p></div><div id="empty"><p>Overflow</p></div>')
+    vi.spyOn(root.querySelector('#empty')!, 'getBoundingClientRect').mockReturnValue({ left: 10, top: 10, width: 200, height: 0, right: 210, bottom: 10 } as DOMRect)
+    const result = await captureBrowserElement(root, vi.fn())
+    expect(result.html).toContain('Shown')
+    expect(result.html).toContain('Overflow')
+    expect(result.html).not.toContain('Gone')
+    expect(() => browserCaptureTransaction(createWebDocument('Design'), result, null)).not.toThrow()
+  })
+
+  it('keeps the stacking order of rasterized blocks', async () => {
+    const root = fixture('<canvas style="position:relative;z-index:5"></canvas><p>Below</p>')
+    const result = await captureBrowserElement(root, vi.fn().mockResolvedValue(png))
+    expect(result.html).toMatch(/<img[^>]*z-index: 5/)
+  })
+
+  it('rasterizes a section that a clipping ancestor partly hides', async () => {
+    const clip = document.createElement('div')
+    clip.style.overflowY = 'hidden'
+    const root = fixture('<p>Partly hidden</p>')
+    clip.append(root)
+    vi.spyOn(clip, 'getBoundingClientRect').mockReturnValue({ left: 10, top: 10, width: 200, height: 50, right: 210, bottom: 60 } as DOMRect)
+    const rasterize = vi.fn().mockResolvedValue(png)
+    const result = await captureBrowserElement(root, rasterize)
+    expect(rasterize).toHaveBeenCalledWith(root)
+    expect(result.html).not.toContain('Partly hidden')
+  })
+
   it('refuses offscreen sections and propagates raster failures', async () => {
     const root = fixture('<canvas></canvas>')
     await expect(captureBrowserElement(root, async () => { throw new Error('pixels unavailable') })).rejects.toThrow('pixels unavailable')

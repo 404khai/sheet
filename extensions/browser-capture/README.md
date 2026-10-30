@@ -66,7 +66,7 @@ section. Nothing in the original website or an existing Sheet layer is changed.
 ## Development verification
 
 Run `bun run test packages/canvas/src/browser-capture.test.ts packages/editor/src/components/browser-capture-import.test.tsx`
-and `bunx tsc --noEmit`. Build the extension, then run
+and `bunx tsc --noEmit` (it also checks the extension's build and smoke scripts). Build the extension, then run
 `bun run extensions/browser-capture/smoke.ts` with Playwright Chromium installed
 (`CHROMIUM_PATH` can point to its executable on any platform).
 The smoke check selects a localhost card through the extension, downloads the

@@ -3801,11 +3801,12 @@ export function WebCanvasEditor({
         onError={setNotice}
       />
       <BrowserCaptureImport onImport={(input) => {
-        const imported = browserCaptureTransaction(documentRef.current, input, canvasParentId(pageId))
+        // The file read is async; place the capture on whichever page is active now.
+        const imported = browserCaptureTransaction(documentRef.current, input, canvasParentId(pageIdRef.current))
         if (!saveTransaction(imported.transaction)) throw new Error('Capture could not be inserted. Nothing was changed.')
-        setSelectedId(imported.rootId)
+        select(imported.rootId)
         if (imported.warnings.length) setNotice(imported.warnings.join(' '))
-        requestAnimationFrame(() => fitToView())
+        revealBox(imported.box)
       }} />
       <ExportMenu designId={designId} draftId={draftId} onError={setNotice} />
     </>

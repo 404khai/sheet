@@ -52,6 +52,8 @@ try {
     return tab.id
   })
   if (!tabId) throw new Error('No active tab')
+  const hints = await page.evaluate(() => [...document.documentElement.children].filter((element) => element.textContent?.startsWith('Sheet: hover')).length)
+  if (hints !== 1) throw new Error(`Reinjection left ${hints} selectors active`)
   await page.locator('#card').hover({ position: { x: 2, y: 2 } })
   const downloaded = page.waitForEvent('download')
   await page.locator('#card').click({ position: { x: 2, y: 2 } })
@@ -69,18 +71,24 @@ try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] })
   })
+  await page.locator('#card').click({ position: { x: 2, y: 2 } })
+  if (await page.evaluate(() => (window as any).sourceClicks) !== 0) throw new Error('Selector did not intercept input before Escape')
   await page.keyboard.press('Escape')
   await page.locator('#card').click({ position: { x: 2, y: 2 } })
   if (await page.evaluate(() => (window as any).sourceClicks) !== 2) throw new Error('Cancel left page input blocked')
   const capture = JSON.parse(await readFile(capturePath, 'utf8'))
   if (!capture.html.includes('data:image/png;base64,') || !capture.html.includes('These words remain editable')) throw new Error('Missing raster or editable text')
   const summary = await page.evaluate(async (input) => {
-    const { browserCaptureTransaction } = await import('/capture.js')
-    const { applyWebTransaction, createWebDocument, serializeWebDocument } = await import('/model.js')
+    // Served bundles of the same sources; typed against them.
+    const captureModule: string = '/capture.js'
+    const modelModule: string = '/model.js'
+    const { browserCaptureTransaction } = await import(captureModule) as typeof import('../../packages/canvas/src/browser-capture')
+    const { applyWebTransaction, createWebDocument, serializeWebDocument } = await import(modelModule) as typeof import('../../packages/canvas/src/web-model')
     const source = createWebDocument('Smoke')
     const imported = browserCaptureTransaction(source, input, null)
     const applied = applyWebTransaction(source, imported.transaction)
     const frame = applied.document.nodes[imported.rootId]
+    if (frame?.kind !== 'element') throw new Error('Capture root is not a frame')
     frame.styles.left = '0px'
     frame.styles.top = '0px'
     const host = document.querySelector('#copy') as HTMLElement
@@ -88,7 +96,8 @@ try {
     host.style.height = '240px'
     host.innerHTML = serializeWebDocument(applied.document)
     const undone = applyWebTransaction(applied.document, applied.inverse)
-    if (undone.document.roots.length) throw new Error('Undo left capture nodes')
+    if (JSON.stringify(undone.document.roots) !== JSON.stringify(source.roots) ||
+      Object.keys(undone.document.nodes).sort().join() !== Object.keys(source.nodes).sort().join()) throw new Error('Undo left capture nodes')
     return { nodes: Object.keys(applied.document.nodes).length, warnings: imported.warnings }
   }, capture)
   await page.screenshot({ path: join(directory, 'capture-comparison.png') })

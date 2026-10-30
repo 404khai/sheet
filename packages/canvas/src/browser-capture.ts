@@ -57,6 +57,14 @@ export async function captureBrowserElement(
   for (let ancestor = root.parentElement; ancestor; ancestor = ancestor.parentElement) {
     const style = getComputedStyle(ancestor)
     if (effect(style, 'transform') || effect(style, 'filter') || effect(style, 'opacity', ['1'])) ancestorEffect = true
+    // An editable copy would reveal whatever a clipping ancestor hides; the pixels show only what is visible.
+    const clips = effect(style, 'clip-path') ||
+      ['overflow-x', 'overflow-y'].some((property) => effect(style, property, ['visible']))
+    if (clips) {
+      const box = ancestor.getBoundingClientRect()
+      if (effect(style, 'clip-path') || bounds.left < box.left || bounds.top < box.top ||
+        bounds.right > box.right || bounds.bottom > box.bottom) ancestorEffect = true
+    }
   }
   let count = 0
   const visit = async (
@@ -66,8 +74,27 @@ export async function captureBrowserElement(
     if (++count > MAX_CAPTURE_NODES) throw new Error('Section is too complex. Select a smaller section.')
     const style = getComputedStyle(element)
     const rect = element.getBoundingClientRect()
-    if (style.display === 'none' || style.visibility === 'hidden' || rect.width < 1 || rect.height < 1) return null
+    if (style.display === 'none') return null
     const children = [...element.children]
+    const borderLeft = parseFloat(parentStyle?.borderLeftWidth ?? '0') || 0
+    const borderTop = parseFloat(parentStyle?.borderTopWidth ?? '0') || 0
+    const place = (copy: HTMLElement) => Object.assign(copy.style, {
+      position: 'absolute', display: 'block', margin: '0', boxSizing: 'border-box',
+      left: `${element === root ? 0 : rect.left - parentBounds.left - borderLeft}px`,
+      top: `${element === root ? 0 : rect.top - parentBounds.top - borderTop}px`,
+      width: `${rect.width}px`, height: `${rect.height}px`,
+    })
+    // Hidden or empty boxes paint nothing themselves, but visible or overflowing children still show.
+    if (style.visibility === 'hidden' || rect.width < 1 || rect.height < 1) {
+      const copy = document.createElement('div')
+      place(copy)
+      for (const property of ['z-index', 'overflow-x', 'overflow-y']) copy.style.setProperty(property, style.getPropertyValue(property))
+      for (const child of children) {
+        const captured = await visit(child, rect, style, depth + 1)
+        if (captured) copy.append(captured)
+      }
+      return copy.childElementCount ? copy : null
+    }
     const mixedText = children.length > 0 && [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent?.trim())
     const pseudo = ['::before', '::after'].some((part) => {
       const content = getComputedStyle(element, part).content
@@ -88,14 +115,7 @@ export async function captureBrowserElement(
     // Images use the browser's pixels: no CORS-dependent downloads, expiring URLs or cookies in the file.
     const raster = !!unsupported || element.localName === 'img'
     const copy = document.createElement(raster ? 'img' : 'div')
-    const borderLeft = parseFloat(parentStyle?.borderLeftWidth ?? '0') || 0
-    const borderTop = parseFloat(parentStyle?.borderTopWidth ?? '0') || 0
-    Object.assign(copy.style, {
-      position: 'absolute', display: 'block', margin: '0', boxSizing: 'border-box',
-      left: `${element === root ? 0 : rect.left - parentBounds.left - borderLeft}px`,
-      top: `${element === root ? 0 : rect.top - parentBounds.top - borderTop}px`,
-      width: `${rect.width}px`, height: `${rect.height}px`,
-    })
+    place(copy)
     if (raster) {
       // Crops must never silently omit an offscreen part of an unsupported block.
       if (rect.left < 0 || rect.top < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight) {
@@ -103,6 +123,8 @@ export async function captureBrowserElement(
       }
       copy.setAttribute('src', await rasterize(element))
       copy.setAttribute('alt', element.getAttribute('alt') ?? '')
+      // Stacking order is not in the pixels; other compositing effects are.
+      copy.style.setProperty('z-index', style.getPropertyValue('z-index'))
       if (unsupported) warnings.push(`${element.localName} with unsupported visuals was captured as an image.`)
     } else {
       for (const property of CAPTURE_STYLE_PROPERTIES) {
@@ -138,7 +160,12 @@ export function browserCaptureTransaction(
   source: WebDocument,
   input: unknown,
   parentId: string | null,
-): { transaction: WebTransaction; rootId: string; warnings: string[] } {
+): {
+  transaction: WebTransaction
+  rootId: string
+  box: { x: number; y: number; width: number; height: number }
+  warnings: string[]
+} {
   if (!input || typeof input !== 'object') throw new Error('Not a Sheet browser capture file.')
   const capture = input as Partial<BrowserCapture>
   if (capture.format !== 'sheet-browser-capture' || capture.version !== 1 ||
@@ -188,6 +215,7 @@ export function browserCaptureTransaction(
   root.styles = { ...root.styles, position: 'absolute', left: `${spot.x}px`, top: `${spot.y}px`, overflow: 'hidden', isolation: 'isolate' }
   return {
     rootId, warnings: capture.warnings,
+    box: { x: spot.x, y: spot.y, width: parseFloat(root.styles.width ?? '') || 0, height: parseFloat(root.styles.height ?? '') || 0 },
     transaction: { id: webId('webtx'), label: 'Import browser capture', operations: Object.values(imported.nodes).map((node) => ({ type: 'node.insert', node })) },
   }
 }

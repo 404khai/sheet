@@ -36,7 +36,12 @@ const cancel = () => {
   delete globalThis.__sheetCaptureCancel
 }
 const key = (event) => {
-  if (event.key === 'Escape') cancel()
+  if (event.key === 'Escape') {
+    // The page must not also act on the Escape that cancels capture.
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    cancel()
+  }
   if (event.key === 'ArrowUp' && selected?.parentElement && !busy) {
     event.preventDefault()
     event.stopImmediatePropagation()
@@ -51,13 +56,15 @@ const click = async (event) => {
   busy = true
   overlay.remove()
   hint.remove()
+  // Chrome pauses animation frames in background tabs, so the timeout covers the compositor wait too.
+  let timer
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Capture timed out. Try again.')), 15_000) })
   try {
     // Let the compositor remove selection UI before requesting visible pixels.
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-    let timer
     const response = await Promise.race([
-      chrome.runtime.sendMessage({ type: 'sheet-capture-pixels' }),
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Capture timed out. Try again.')), 15_000) }),
+      new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        .then(() => chrome.runtime.sendMessage({ type: 'sheet-capture-pixels' })),
+      timeout,
     ]).finally(() => clearTimeout(timer))
     if (!response?.data) throw new Error(response?.error || 'Could not capture this tab.')
     const image = new Image()

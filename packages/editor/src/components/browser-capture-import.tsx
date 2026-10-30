@@ -11,7 +11,10 @@ export function BrowserCaptureImport({ onImport }: { onImport: (input: unknown) 
   return (
     <>
       <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>Import capture</Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setError(null)
+      }}>
         <DialogPopup className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Import a browser capture</DialogTitle>
